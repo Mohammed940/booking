@@ -1,4 +1,3 @@
-const cron = require('node-cron');
 const { REMINDER_MINUTES_BEFORE, TIMEZONE } = require('./config');
 const GoogleSheetsService = require('./googleSheetsService');
 
@@ -12,7 +11,7 @@ class BotHandler {
     this.sheetsService = new GoogleSheetsService();
     this.userStates = new Map(); // Track user conversation states
     this.pendingConfirmations = new Map(); // Track pending booking confirmations
-    this.setupCronJobs(); // Setup reminder jobs
+    // Note: Cron jobs removed to support free Render tier
   }
 
   /**
@@ -214,7 +213,7 @@ class BotHandler {
       // Send welcome message
       await this.bot.sendMessage(
         chatId,
-        '🩺 مرحباً بك في نظام حجز المواعيد الطبية!\نيرجى اختيار المركز الصحي:'
+        '🩺 مرحباً بك في نظام حجز المواعيد الطبية!\nيرجى اختيار المركز الصحي:'
       );
       
       // Get medical centers
@@ -348,26 +347,21 @@ class BotHandler {
       
       // Get available time slots for tomorrow
       console.log(`Fetching time slots for clinic: ${clinicName} at center: ${centerName}`);
-      const slots = await this.sheetsService.getAvailableSlotsForTomorrow(
-        centerName, 
-        clinicName
-      );
-      console.log(`Found ${slots.length} time slots for clinic ${clinicName}:`, slots);
+      const tomorrow = this.sheetsService.getTomorrowDate();
+      console.log(`Looking for appointments for tomorrow's date: ${tomorrow}`);
+      const slots = await this.sheetsService.getAvailableSlotsForTomorrow(centerName, clinicName);
+      console.log(`Found ${slots.length} available slots`);
       
       if (slots.length === 0) {
-        console.log(`No time slots found for clinic: ${clinicName} at center: ${centerName}`);
         await this.bot.sendMessage(
           chatId,
-          '❌ عذراً، لا توجد مواعيد متاحة غداً في هذه العيادة.'
+          `❌ عذراً، لا توجد مواعيد متاحة mañana في عيادة ${clinicName} بمركز ${centerName}. يرجى اختيار عيادة أخرى.`
         );
-        
-        // Go back to clinic selection
-        await this.handleCenterSelection(chatId, centerName);
         return;
       }
       
       // Create a numbered list of time slots
-      let slotsList = `📋 الرجاء اختيار رقم الوقت المتاح في عيادة ${clinicName} غداً:\n\n`;
+      let slotsList = `📋 الرجاء اختيار رقم الموعد المتاح في عيادة ${clinicName} بمركز ${centerName}:\n\n`;
       slots.forEach((slot, index) => {
         slotsList += `${index + 1}. ⏰ ${slot.time}\n`;
       });
@@ -389,39 +383,28 @@ class BotHandler {
       );
     } catch (error) {
       console.error('Error handling clinic selection:', error);
-      let errorMessage = '❌ حدث خطأ أثناء تحميل المواعيد المتاحة. يرجى المحاولة مرة أخرى لاحقاً.';
-      
-      // Provide more specific error messages
-      if (error.message && error.message.includes('Spreadsheet not found')) {
-        errorMessage = '⚙️ خطأ في التكوين: لم يتم العثور على جدول البيانات. يرجى التحقق من إعدادات البوت.';
-      } else if (error.message && error.message.includes('Access denied')) {
-        errorMessage = '⚙️ خطأ في التكوين: لا توجد صلاحيات للوصول إلى جدول البيانات. يرجى التحقق من إعدادات الوصول.';
-      }
-      
       await this.bot.sendMessage(
         chatId,
-        errorMessage
+        '❌ حدث خطأ أثناء تحميل المواعيد المتاحة. يرجى المحاولة مرة أخرى لاحقاً.'
       );
     }
   }
 
   /**
-   * Handle time selection
+   * Handle time slot selection
    */
   async handleTimeSelection(chatId, rowIndex, centerName, clinicName) {
     try {
-      // Get appointment details
-      const appointment = await this.sheetsService.getAppointmentDetails(rowIndex);
+      console.log(`User ${chatId} selected time slot at row: ${rowIndex}`);
       
-      // Update user state to collect patient information
+      // Update user state to collecting patient info
+      const userState = this.userStates.get(chatId) || {};
       this.userStates.set(chatId, { 
+        ...userState,
         step: 'COLLECTING_PATIENT_INFO',
         rowIndex: rowIndex,
         center: centerName,
-        clinic: clinicName,
-        date: appointment.date,
-        time: appointment.time,
-        appointmentDetails: appointment
+        clinic: clinicName
       });
       
       // Ask for patient name
@@ -433,45 +416,64 @@ class BotHandler {
       console.error('Error handling time selection:', error);
       await this.bot.sendMessage(
         chatId,
-        '❌ حدث خطأ أثناء تجهيز تأكيد الحجز. يرجى المحاولة مرة أخرى لاحقاً.'
+        '❌ حدث خطأ أثناء معالجة اختيار الموعد. يرجى المحاولة مرة أخرى لاحقاً.'
       );
     }
   }
 
   /**
-   * Send booking confirmation with patient details
+   * Send booking confirmation
    */
-  async sendBookingConfirmation(chatId, bookingData) {
-    const { 
-      rowIndex, 
-      center, 
-      clinic, 
-      date, 
-      time, 
-      patientName, 
-      patientAge 
-    } = bookingData;
-    
-    // Update user state
-    this.userStates.set(chatId, { 
-      ...bookingData,
-      step: 'CONFIRMING_BOOKING'
-    });
-    
-    // Send confirmation message with patient details
-    await this.bot.sendMessage(
-      chatId,
-      `📋 *تأكيد الحجز*\n\n` +
-      `🏢 المركز: ${center}\n` +
-      `⚕️ العيادة: ${clinic}\n` +
-      `📅 التاريخ: ${date}\n` +
-      `⏰ الوقت: ${time}\n` +
-      `👤 اسم المريض: ${patientName}\n` +
-      `🎂 عمر المريض: ${patientAge} سنوات\n\n` +
-      `لتأكيد الحجز، أرسل "نعم" أو "تأكيد"\n` +
-      `لإلغاء الحجز، أرسل "لا" أو "إلغاء"`,
-      { parse_mode: 'Markdown' }
-    );
+  async sendBookingConfirmation(chatId, userState) {
+    try {
+      const { center, clinic, slots, rowIndex, patientName, patientAge } = userState;
+      
+      // Find the selected slot
+      const selectedSlot = slots.find(slot => slot.rowIndex === rowIndex);
+      const time = selectedSlot ? selectedSlot.time : 'غير محدد';
+      
+      // Create confirmation message
+      const confirmationMessage = `
+✅ *تأكيد الحجز*
+
+🏥 المركز: ${center}
+⚕️ العيادة: ${clinic}
+📅 التاريخ: غداً
+⏰ الوقت: ${time}
+👤 المريض: ${patientName}
+🎂 العمر: ${patientAge} سنة
+
+هل تؤكد هذا الحجز؟
+لتأكيد الحجز، أرسل "نعم" أو "تأكيد"
+لإلغاء الحجز، أرسل "لا" أو "إلغاء"
+      `;
+      
+      // Save pending confirmation
+      this.pendingConfirmations.set(chatId, {
+        rowIndex,
+        patientName,
+        patientAge
+      });
+      
+      // Update user state
+      this.userStates.set(chatId, { 
+        ...userState,
+        step: 'CONFIRMING_BOOKING'
+      });
+      
+      // Send confirmation message
+      await this.bot.sendMessage(
+        chatId,
+        confirmationMessage,
+        { parse_mode: 'Markdown' }
+      );
+    } catch (error) {
+      console.error('Error sending booking confirmation:', error);
+      await this.bot.sendMessage(
+        chatId,
+        '❌ حدث خطأ أثناء إعداد تأكيد الحجز. يرجى المحاولة مرة أخرى لاحقاً.'
+      );
+    }
   }
 
   /**
@@ -479,105 +481,66 @@ class BotHandler {
    */
   async handleBookingConfirmation(chatId, confirmed) {
     try {
-      if (!confirmed) {
-        // User cancelled the booking
+      if (confirmed) {
+        // Get pending confirmation data
+        const pendingConfirmation = this.pendingConfirmations.get(chatId);
         const userState = this.userStates.get(chatId);
+        
+        if (!pendingConfirmation || !userState) {
+          await this.bot.sendMessage(
+            chatId,
+            '❌ عذراً، لم يتم العثور على بيانات الحجز. يرجى بدء الحجز من جديد بإرسال "حجز".'
+          );
+          return;
+        }
+        
+        const { rowIndex, patientName, patientAge } = pendingConfirmation;
+        const { center, clinic } = userState;
+        
+        // Book the appointment
+        await this.sheetsService.bookAppointment(rowIndex, chatId, patientName, patientAge);
+        
+        // Create success message
+        const successMessage = `
+✅ *تم تأكيد الحجز بنجاح!*
+
+🏥 المركز: ${center}
+⚕️ العيادة: ${clinic}
+📅 التاريخ: غداً
+⏰ الوقت: سيتم تحديد الوقت لاحقاً
+👤 المريض: ${patientName}
+🎂 العمر: ${patientAge} سنة
+
+تم حجز موعدك بنجاح! سيتم إعلامك بالتفاصيل قريبًا.
+        `;
+        
+        // Send success message
+        await this.bot.sendMessage(
+          chatId,
+          successMessage,
+          { parse_mode: 'Markdown' }
+        );
+        
+        // Clear user state and pending confirmation
         this.userStates.delete(chatId);
         this.pendingConfirmations.delete(chatId);
+      } else {
+        // Cancel booking
+        await this.bot.sendMessage(
+          chatId,
+          '❌ تم إلغاء الحجز. يمكنك بدء حجز جديد في أي وقت بإرسال "حجز".'
+        );
         
-        await this.bot.sendMessage(
-          chatId,
-          '❌ تم إلغاء الحجز. يمكنك بدء حجز جديد بإرسال كلمة "حجز".'
-        );
-        return;
+        // Clear user state and pending confirmation
+        this.userStates.delete(chatId);
+        this.pendingConfirmations.delete(chatId);
       }
-      
-      // Get pending confirmation data
-      const confirmationData = this.userStates.get(chatId);
-      if (!confirmationData) {
-        await this.bot.sendMessage(
-          chatId,
-          '❌ عذراً، لم نتمكن من العثور على بيانات الحجز. يرجى المحاولة مرة أخرى.'
-        );
-        return;
-      }
-      
-      const { 
-        rowIndex, 
-        center, 
-        clinic, 
-        date, 
-        time, 
-        patientName, 
-        patientAge 
-      } = confirmationData;
-      
-      // Book the appointment with patient information
-      await this.sheetsService.bookAppointment(rowIndex, chatId, patientName, patientAge);
-      
-      // Clean up user state
-      this.userStates.delete(chatId);
-      this.pendingConfirmations.delete(chatId);
-      
-      // Send confirmation message
-      await this.bot.sendMessage(
-        chatId,
-        '✅ *تم تأكيد حجزك بنجاح!*\n\n' +
-        `📋 *تفاصيل الحجز:*\n` +
-        `🏢 المركز: ${center}\n` +
-        `⚕️ العيادة: ${clinic}\n` +
-        `📅 التاريخ: ${date}\n` +
-        `⏰ الوقت: ${time}\n` +
-        `👤 المريض: ${patientName}\n` +
-        `🎂 العمر: ${patientAge} سنوات\n\n` +
-        'سيتم إرسال تذكير قبل الموعد بساعتين.',
-        { parse_mode: 'Markdown' }
-      );
     } catch (error) {
       console.error('Error handling booking confirmation:', error);
-      
-      // Clean up user state even on error
-      this.userStates.delete(chatId);
-      this.pendingConfirmations.delete(chatId);
-      
       await this.bot.sendMessage(
         chatId,
         '❌ حدث خطأ أثناء تأكيد الحجز. يرجى المحاولة مرة أخرى لاحقاً.'
       );
-    }
-  }
-
-  /**
-   * Setup cron jobs for sending reminders
-   */
-  setupCronJobs() {
-    // Run every minute to check for appointments that need reminders
-    cron.schedule('* * * * *', async () => {
-      try {
-        await this.sendReminders();
-      } catch (error) {
-        console.error('Error in reminder cron job:', error);
-      }
-    }, {
-      timezone: TIMEZONE
-    });
-  }
-
-  /**
-   * Send reminders for upcoming appointments
-   */
-  async sendReminders() {
-    try {
-      // In a real implementation, you would:
-      // 1. Query the spreadsheet for appointments in the next 2 hours
-      // 2. Check if a reminder has already been sent
-      // 3. Send reminders to users
-      // 4. Mark reminders as sent in the spreadsheet
-      
-      // This is a simplified implementation
-      console.log('Checking for appointments that need reminders...');
-    } catch (error) {
-      console.error('Error sending reminders:', error);
     }
   }
 }
