@@ -1,9 +1,19 @@
 // Configuration file for the Medical Booking Bot
 // Store all sensitive information and settings here
 
-// Load Google credentials from file if specified
+// Load Google credentials from environment variable first, then from file if specified
 let googleCredentials = null;
-if (process.env.GOOGLE_CREDENTIALS_FILE) {
+
+// First try to load from GOOGLE_CREDENTIALS environment variable
+if (process.env.GOOGLE_CREDENTIALS && process.env.GOOGLE_CREDENTIALS !== 'your_google_credentials_json_here') {
+  try {
+    googleCredentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+  } catch (error) {
+    console.error('Error parsing Google credentials from environment variable:', error);
+  }
+} 
+// If that fails, try to load from file
+else if (process.env.GOOGLE_CREDENTIALS_FILE) {
   try {
     googleCredentials = require(process.env.GOOGLE_CREDENTIALS_FILE);
     // Check if the credentials are placeholder values
@@ -14,12 +24,6 @@ if (process.env.GOOGLE_CREDENTIALS_FILE) {
     }
   } catch (error) {
     console.warn('Warning: Could not load Google credentials from file:', error.message);
-  }
-} else if (process.env.GOOGLE_CREDENTIALS && process.env.GOOGLE_CREDENTIALS !== 'your_google_credentials_json_here') {
-  try {
-    googleCredentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
-  } catch (error) {
-    console.error('Error parsing Google credentials from environment variable:', error);
   }
 }
 
