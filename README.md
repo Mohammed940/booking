@@ -33,26 +33,19 @@ A comprehensive Telegram bot for medical appointment booking integrated with Goo
 ### Production Deployment
 For continuous operation, deploy using webhooks:
 
-#### Free Hosting Options
+#### Deploy to Render
+1. Fork this repository
+2. Create a new Web Service on Render
+3. Connect to your forked repository
+4. Set the required environment variables
+5. Deploy the service
 
-1. **Render** (Free Tier Available)
-   - Create a new Web Service on Render
-   - Connect to your forked repository
-   - Set the required environment variables
-   - Deploy the service
-
-2. **Railway** (Free Tier Available)
-   - Create a new Project on Railway
-   - Connect to your forked repository
-   - Set the required environment variables
-   - Deploy the service
-
-3. **Vercel** (Free Tier Available)
-   - Create a new Project on Vercel
-   - Import your forked repository
-   - Set the required environment variables
-   - Deploy the service
-   - Note: Vercel is better suited for serverless functions; for continuous services, Render or Railway are recommended
+#### Deploy to Railway
+1. Fork this repository
+2. Create a new Project on Railway
+3. Connect to your forked repository
+4. Set the required environment variables
+5. Deploy the service
 
 ## Environment Variables
 
@@ -109,7 +102,6 @@ npm start
 
 - [Render Deployment Guide](file:///c%3A/Users/hussein%20tech/StudioProjects/New%20folder%20%284%29/RENDER_DEPLOYMENT_GUIDE.md)
 - [Railway Deployment Guide](file:///c%3A/Users/hussein%20tech/StudioProjects/New%20folder%20%284%29/RAILWAY_DEPLOYMENT_GUIDE.md)
-- [Vercel Deployment Guide](file:///c%3A/Users/hussein%20tech/StudioProjects/New%20folder%20%284%29/VERCEL_DEPLOYMENT_GUIDE.md)
 
 ## License
 This project is licensed under the MIT License.

@@ -6,6 +6,12 @@ let googleCredentials = null;
 if (process.env.GOOGLE_CREDENTIALS_FILE) {
   try {
     googleCredentials = require(process.env.GOOGLE_CREDENTIALS_FILE);
+    // Check if the credentials are placeholder values
+    if (googleCredentials.project_id === 'your-project-id' || 
+        googleCredentials.client_email.includes('your-service-account')) {
+      console.warn('Warning: Google credentials file contains placeholder values. Google Sheets integration will not work.');
+      googleCredentials = null;
+    }
   } catch (error) {
     console.warn('Warning: Could not load Google credentials from file:', error.message);
   }

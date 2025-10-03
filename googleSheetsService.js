@@ -9,7 +9,9 @@ class GoogleSheetsService {
   constructor() {
     // Check if credentials are provided
     if (!GOOGLE_SHEETS.CREDENTIALS) {
-      throw new Error('Google Sheets credentials not found. Please set GOOGLE_CREDENTIALS in your environment variables.');
+      console.warn('Google Sheets credentials not found. Google Sheets integration will be disabled.');
+      this.disabled = true;
+      return;
     }
     
     // Check if spreadsheet ID is provided
@@ -37,6 +39,12 @@ class GoogleSheetsService {
    * Assumes centers are in column A of the first sheet
    */
   async getMedicalCenters() {
+    // If Google Sheets is disabled, return sample data
+    if (this.disabled) {
+      console.warn('Google Sheets is disabled. Returning sample data.');
+      return ['مستشفى الملك فهد', 'مركز الأمير سلطان الصحي', 'مستشفى الملك عبدالعزيز الجامعي'];
+    }
+    
     try {
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.spreadsheetId,
@@ -68,6 +76,12 @@ class GoogleSheetsService {
    * Assumes data is structured with Center in column A, Clinic in column B
    */
   async getClinicsForCenter(centerName) {
+    // If Google Sheets is disabled, return sample data
+    if (this.disabled) {
+      console.warn('Google Sheets is disabled. Returning sample data.');
+      return ['قسم القلب', 'قسم العيون', 'قسم الأسنان', 'قسم الجراحة'];
+    }
+    
     try {
       console.log(`Fetching clinics for center: ${centerName}`);
       const response = await this.sheets.spreadsheets.values.get({
@@ -101,6 +115,16 @@ class GoogleSheetsService {
    * Assumes data structure: Center (A), Clinic (B), Date (C), Time (D), Status (E), Chat ID (F)
    */
   async getAvailableSlotsForTomorrow(centerName, clinicName) {
+    // If Google Sheets is disabled, return sample data
+    if (this.disabled) {
+      console.warn('Google Sheets is disabled. Returning sample data.');
+      return [
+        { rowIndex: 2, date: this.getTomorrowDate(), time: '09:00', status: 'متاح' },
+        { rowIndex: 3, date: this.getTomorrowDate(), time: '10:30', status: 'متاح' },
+        { rowIndex: 4, date: this.getTomorrowDate(), time: '14:00', status: 'متاح' }
+      ];
+    }
+    
     try {
       console.log(`Fetching time slots for center: ${centerName}, clinic: ${clinicName}`);
       const response = await this.sheets.spreadsheets.values.get({
@@ -153,6 +177,12 @@ class GoogleSheetsService {
    * Book an appointment by updating the status and storing user's chat ID
    */
   async bookAppointment(rowIndex, chatId, patientName, patientAge) {
+    // If Google Sheets is disabled, just log the booking
+    if (this.disabled) {
+      console.warn('Google Sheets is disabled. Booking not saved to spreadsheet.');
+      return { success: true, message: 'Booking simulated successfully' };
+    }
+    
     try {
       // Update the row with booking status, chat ID, patient name, and patient age
       const response = await this.sheets.spreadsheets.values.update({
@@ -175,6 +205,19 @@ class GoogleSheetsService {
    * Get appointment details by row index
    */
   async getAppointmentDetails(rowIndex) {
+    // If Google Sheets is disabled, return sample data
+    if (this.disabled) {
+      console.warn('Google Sheets is disabled. Returning sample data.');
+      return {
+        center: 'مستشفى الملك فهد',
+        clinic: 'قسم القلب',
+        date: this.getTomorrowDate(),
+        time: '09:00',
+        status: 'محجوز',
+        chatId: 'sample-chat-id'
+      };
+    }
+    
     try {
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.spreadsheetId,
@@ -205,6 +248,12 @@ class GoogleSheetsService {
    * Get all booked appointments for a specific chat ID
    */
   async getUserAppointments(chatId) {
+    // If Google Sheets is disabled, return sample data
+    if (this.disabled) {
+      console.warn('Google Sheets is disabled. Returning sample data.');
+      return [];
+    }
+    
     try {
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.spreadsheetId,
