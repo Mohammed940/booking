@@ -23,8 +23,9 @@ async function setupWebhook() {
     process.exit(1);
   }
   
-  // Ensure URL ends with /api/bot
-  const webhookUrl = VERCEL_URL.endsWith('/api/bot') ? VERCEL_URL : `${VERCEL_URL}/api/bot`;
+  // Ensure URL is properly formatted
+  const baseUrl = VERCEL_URL.startsWith('https://') ? VERCEL_URL : `https://${VERCEL_URL}`;
+  const webhookUrl = `${baseUrl}/webhook`;
   
   try {
     console.log(`Setting webhook to: ${webhookUrl}`);

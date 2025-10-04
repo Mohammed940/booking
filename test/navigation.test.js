@@ -1,5 +1,5 @@
-// Mock Google Sheets service before importing BotHandler
-jest.mock('../googleSheetsService');
+// Mock Supabase service before importing BotHandler
+jest.mock('../supabaseService');
 
 const BotHandler = require('../botHandler');
 

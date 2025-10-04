@@ -1,5 +1,5 @@
 const { REMINDER_MINUTES_BEFORE, TIMEZONE } = require('./config');
-const GoogleSheetsService = require('./googleSheetsService');
+const SupabaseService = require('./supabaseService');
 
 /**
  * Bot Handler
@@ -8,7 +8,7 @@ const GoogleSheetsService = require('./googleSheetsService');
 class BotHandler {
   constructor(bot) {
     this.bot = bot;
-    this.sheetsService = new GoogleSheetsService();
+    this.supabaseService = new SupabaseService();
     this.userStates = new Map(); // Track user conversation states
     this.pendingConfirmations = new Map(); // Track pending booking confirmations
     // Note: Cron jobs removed to support free Render tier
@@ -268,12 +268,12 @@ class BotHandler {
       // Send welcome message immediately
       await this.bot.sendMessage(
         chatId,
-        '🩺 مرحباً بك في نظام حجز المواعيد الطبية!\نيرجى اختيار المركز الصحي:'
+        '🩺 مرحباً بك في نظام حجز المواعيد الطبية!\nيرجى اختيار المركز الصحي:'
       );
       
       console.log(`Fetching medical centers for user ${chatId}`);
       // Get medical centers (will use cached data if available)
-      const centers = await this.sheetsService.getMedicalCenters();
+      const centers = await this.supabaseService.getMedicalCenters();
       console.log(`Received ${centers.length} centers for user ${chatId}`);
       
       if (centers.length === 0) {
@@ -307,16 +307,10 @@ class BotHandler {
       // Provide more specific error messages based on the error type
       let errorMessage = '❌ حدث خطأ أثناء تحميل المراكز الصحية. يرجى المحاولة مرة أخرى لاحقاً.';
       
-      if (error.message && error.message.includes('Google Sheets credentials not found')) {
-        errorMessage = '⚙️ خطأ في التكوين: لم يتم العثور على بيانات اعتماد Google Sheets. يرجى التحقق من إعدادات البوت.';
-      } else if (error.code === 404) {
-        errorMessage = '⚙️ خطأ في التكوين: لم يتم العثور على جدول البيانات. يرجى التحقق من معرف جدول البيانات.';
-      } else if (error.code === 403) {
-        errorMessage = '⚙️ خطأ في التكوين: لا توجد صلاحيات للوصول إلى جدول البيانات. يرجى التحقق من إعدادات الوصول.';
-      } else if (error.message && error.message.includes('The caller does not have permission')) {
-        errorMessage = '⚙️ خطأ في التكوين: لا توجد صلاحيات للوصول إلى جدول البيانات. يرجى التحقق من إعدادات الوصول.';
+      if (error.message && error.message.includes('Supabase credentials not found')) {
+        errorMessage = '⚙️ خطأ في التكوين: لم يتم العثور على بيانات اعتماد Supabase. يرجى التحقق من إعدادات البوت.';
       } else if (error.message && error.message.includes('timeout')) {
-        errorMessage = '⏰ انتهت مهلة الاتصال بجداول Google. يرجى المحاولة مرة أخرى لاحقًا.';
+        errorMessage = '⏰ انتهت مهلة الاتصال بقاعدة بيانات Supabase. يرجى المحاولة مرة أخرى لاحقًا.';
       }
       
       await this.bot.sendMessage(chatId, errorMessage);
@@ -368,7 +362,7 @@ class BotHandler {
       
       // Get clinics for the selected center (will use cached data if available)
       console.log(`Fetching clinics for center: ${centerName} for user ${chatId}`);
-      const clinics = await this.sheetsService.getClinicsForCenter(centerName);
+      const clinics = await this.supabaseService.getClinicsForCenter(centerName);
       console.log(`Found ${clinics.length} clinics for center ${centerName} for user ${chatId}:`, clinics);
       
       if (clinics.length === 0) {
@@ -408,12 +402,8 @@ class BotHandler {
       let errorMessage = '❌ حدث خطأ أثناء تحميل العيادات. يرجى المحاولة مرة أخرى لاحقاً.';
       
       // Provide more specific error messages
-      if (error.message && error.message.includes('Spreadsheet not found')) {
-        errorMessage = '⚙️ خطأ في التكوين: لم يتم العثور على جدول البيانات. يرجى التحقق من إعدادات البوت.';
-      } else if (error.message && error.message.includes('Access denied')) {
-        errorMessage = '⚙️ خطأ في التكوين: لا توجد صلاحيات للوصول إلى جدول البيانات. يرجى التحقق من إعدادات الوصول.';
-      } else if (error.message && error.message.includes('timeout')) {
-        errorMessage = '⏰ انتهت مهلة الاتصال بجداول Google. يرجى المحاولة مرة أخرى لاحقًا.';
+      if (error.message && error.message.includes('timeout')) {
+        errorMessage = '⏰ انتهت مهلة الاتصال بقاعدة بيانات Supabase. يرجى المحاولة مرة أخرى لاحقًا.';
       }
       
       await this.bot.sendMessage(
@@ -442,15 +432,15 @@ class BotHandler {
       
       // Get available time slots for tomorrow (will use cached data if available)
       console.log(`Fetching time slots for clinic: ${clinicName} at center: ${centerName}`);
-      const tomorrow = this.sheetsService.getTomorrowDate();
+      const tomorrow = this.supabaseService.getTomorrowDate();
       console.log(`Looking for appointments for tomorrow's date: ${tomorrow}`);
-      const slots = await this.sheetsService.getAvailableSlotsForTomorrow(centerName, clinicName);
+      const slots = await this.supabaseService.getAvailableSlotsForTomorrow(centerName, clinicName);
       console.log(`Found ${slots.length} available slots`);
       
       if (slots.length === 0) {
         await this.bot.sendMessage(
           chatId,
-          `❌ عذراً، لا توجد مواعيد متاحة غداً في عيادة ${clinicName} بمركز ${centerName}. يرجى اختيار عيادة أخرى.`
+          `❌ عذراً، لا توجد مواعيد متاحة mañana في عيادة ${clinicName} بمركز ${centerName}. يرجى اختيار عيادة أخرى.`
         );
         return;
       }
@@ -593,7 +583,7 @@ class BotHandler {
         const { center, clinic } = userState;
         
         // Book the appointment
-        await this.sheetsService.bookAppointment(rowIndex, chatId, patientName, patientAge);
+        await this.supabaseService.bookAppointment(rowIndex, chatId, patientName, patientAge);
         
         // Create success message
         const successMessage = `

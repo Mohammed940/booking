@@ -1,19 +1,22 @@
 {
   "name": "medical-booking-bot",
   "version": "1.0.0",
-  "description": "Telegram bot for medical appointment booking integrated with Google Sheets",
+  "description": "Telegram bot for medical appointment booking integrated with Supabase",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "cross-env NODE_ENV=test jest",
     "test:watch": "cross-env NODE_ENV=test jest --watch",
-    "setup-webhook": "node setup-webhook.js"
+    "setup-webhook": "node setup-webhook.js",
+    "init-db": "node init-database.js",
+    "init-professional-db": "node init-professional-database.js",
+    "test-connection": "node test-supabase.js"
   },
   "keywords": [
     "telegram",
     "bot",
-    "google-sheets",
+    "supabase",
     "appointment",
     "booking"
   ],
@@ -22,9 +25,9 @@
   "dependencies": {
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
-    "googleapis": "^134.0.0",
     "node-telegram-bot-api": "^0.66.0",
-    "axios": "^1.6.0"
+    "axios": "^1.6.0",
+    "@supabase/supabase-js": "^2.39.0"
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
@@ -45,7 +48,7 @@
       "**/*.test.js"
     ],
     "moduleNameMapper": {
-      "^../googleSheetsService$": "<rootDir>/test/__mocks__/googleSheetsService.js"
+      "^../supabaseService$": "<rootDir>/test/__mocks__/supabaseService.js"
     }
   }
 }

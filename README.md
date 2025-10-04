@@ -1,12 +1,12 @@
 # Medical Booking Telegram Bot
 
-A Telegram bot for medical appointment booking integrated with Google Sheets.
+A Telegram bot for medical appointment booking integrated with Supabase.
 
 ## Features
 
 - Book appointments at medical centers and clinics
 - View available time slots
-- Automatic Google Sheets integration
+- Automatic Supabase database integration
 - Multi-step conversation flow
 - Arabic language support
 
@@ -23,22 +23,50 @@ Create a `.env` file with the following variables:
 
 ```
 TELEGRAM_TOKEN=your_telegram_bot_token
-SPREADSHEET_ID=your_google_spreadsheet_id
-GOOGLE_APPLICATION_CREDENTIALS_BASE64=base64_encoded_google_credentials
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_KEY=your_supabase_anon_key
 ADMIN_CHAT_ID=your_admin_chat_id
 ```
 
-## Deployment
+## Database Setup
 
-### Vercel (Recommended)
+Create the following tables in your Supabase database:
 
-See [VERCEL_DEPLOYMENT_GUIDE.md](VERCEL_DEPLOYMENT_GUIDE.md) for detailed instructions.
+### Medical Centers Table
+```sql
+CREATE TABLE medical_centers (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
 
-### Other Platforms
+### Clinics Table
+```sql
+CREATE TABLE clinics (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  center_name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
 
-The bot can also be deployed to:
-- Render (see [RENDER_DEPLOYMENT_GUIDE.md](RENDER_DEPLOYMENT_GUIDE.md))
-- Railway (see [RAILWAY_DEPLOYMENT_GUIDE.md](RAILWAY_DEPLOYMENT_GUIDE.md))
+### Appointments Table
+```sql
+CREATE TABLE appointments (
+  id SERIAL PRIMARY KEY,
+  center_name VARCHAR(255) NOT NULL,
+  clinic_name VARCHAR(255) NOT NULL,
+  date VARCHAR(10) NOT NULL,
+  time VARCHAR(10) NOT NULL,
+  status VARCHAR(50) DEFAULT 'متاح',
+  chat_id VARCHAR(255),
+  patient_name VARCHAR(255),
+  patient_age INTEGER,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
 
 ## Usage
 
@@ -71,7 +99,7 @@ npm test
 The bot uses:
 - Express.js for the web server
 - node-telegram-bot-api for Telegram integration
-- Google Sheets API for data storage
+- Supabase for data storage
 - Caching to improve performance
 
 ## Troubleshooting

@@ -8,9 +8,9 @@ services:
     envVars:
       - key: TELEGRAM_TOKEN
         sync: false
-      - key: SPREADSHEET_ID
+      - key: SUPABASE_URL
         sync: false
-      - key: GOOGLE_CREDENTIALS
+      - key: SUPABASE_KEY
         sync: false
       - key: NODE_ENV
         value: production

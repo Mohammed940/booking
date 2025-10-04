@@ -1,24 +1,19 @@
 /**
- * Simple test script to verify Google Sheets connection
+ * Simple test script to verify Supabase connection
  */
 
 require('dotenv').config();
-const GoogleSheetsService = require('./googleSheetsService');
+const SupabaseService = require('./supabaseService');
 
 async function testConnection() {
-  console.log('Testing Google Sheets connection...');
+  console.log('Testing Supabase connection...');
   
   try {
-    const sheetsService = new GoogleSheetsService();
-    
-    if (sheetsService.disabled) {
-      console.log('Google Sheets service is disabled');
-      return;
-    }
+    const supabaseService = new SupabaseService();
     
     console.log('Fetching medical centers...');
     const startTime = Date.now();
-    const centers = await sheetsService.getMedicalCenters();
+    const centers = await supabaseService.getMedicalCenters();
     const endTime = Date.now();
     
     console.log(`Found ${centers.length} centers in ${endTime - startTime}ms:`);
@@ -29,7 +24,7 @@ async function testConnection() {
     if (centers.length > 0) {
       console.log('\nFetching clinics for first center...');
       const startTime2 = Date.now();
-      const clinics = await sheetsService.getClinicsForCenter(centers[0]);
+      const clinics = await supabaseService.getClinicsForCenter(centers[0]);
       const endTime2 = Date.now();
       
       console.log(`Found ${clinics.length} clinics in ${endTime2 - startTime2}ms:`);
@@ -38,9 +33,9 @@ async function testConnection() {
       });
     }
     
-    console.log('\n✅ Google Sheets connection test completed successfully!');
+    console.log('\n✅ Supabase connection test completed successfully!');
   } catch (error) {
-    console.error('❌ Google Sheets connection test failed:', error.message);
+    console.error('❌ Supabase connection test failed:', error.message);
     console.error('Error details:', error);
   }
 }

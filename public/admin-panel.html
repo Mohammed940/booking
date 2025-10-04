@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة الإدارة - نظام الحجز الطبي</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            direction: rtl;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+        }
+        .section h2 {
+            color: #3498db;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .success {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .error {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #eee;
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+            margin-left: 5px;
+        }
+        .tab.active {
+            background-color: #3498db;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>لوحة الإدارة - نظام الحجز الطبي</h1>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="showTab('centers')">المراكز الصحية</div>
+            <div class="tab" onclick="showTab('clinics')">العيادات</div>
+            <div class="tab" onclick="showTab('slots')">المواعيد المتاحة</div>
+            <div class="tab" onclick="showTab('appointments')">الحجوزات</div>
+        </div>
+        
+        <!--_centers_tab-->
+        <div id="centers" class="tab-content active">
+            <div class="section">
+                <h2>إضافة مركز صحي جديد</h2>
+                <div class="form-group">
+                    <label for="centerName">اسم المركز:</label>
+                    <input type="text" id="centerName" placeholder="أدخل اسم المركز الصحي">
+                </div>
+                <div class="form-group">
+                    <label for="centerAddress">العنوان:</label>
+                    <input type="text" id="centerAddress" placeholder="أدخل عنوان المركز">
+                </div>
+                <div class="form-group">
+                    <label for="centerPhone">رقم الهاتف:</label>
+                    <input type="text" id="centerPhone" placeholder="أدخل رقم الهاتف">
+                </div>
+                <button onclick="addCenter()">إضافة مركز</button>
+                <div id="centerResult" class="results"></div>
+            </div>
+            
+            <div class="section">
+                <h2>جميع المراكز الصحية</h2>
+                <button onclick="loadCenters()">تحديث القائمة</button>
+                <div id="centersList" class="results"></div>
+            </div>
+        </div>
+        
+        <!--clinics_tab-->
+        <div id="clinics" class="tab-content">
+            <div class="section">
+                <h2>إضافة عيادة جديدة</h2>
+                <div class="form-group">
+                    <label for="clinicCenter">اختر المركز:</label>
+                    <select id="clinicCenter"></select>
+                </div>
+                <div class="form-group">
+                    <label for="clinicName">اسم العيادة:</label>
+                    <input type="text" id="clinicName" placeholder="أدخل اسم العيادة">
+                </div>
+                <div class="form-group">
+                    <label for="clinicDescription">الوصف:</label>
+                    <textarea id="clinicDescription" placeholder="أدخل وصف العيادة"></textarea>
+                </div>
+                <button onclick="addClinic()">إضافة عيادة</button>
+                <div id="clinicResult" class="results"></div>
+            </div>
+            
+            <div class="section">
+                <h2>جميع العيادات</h2>
+                <div class="form-group">
+                    <label for="viewClinicCenter">اختر المركز لعرض العيادات:</label>
+                    <select id="viewClinicCenter" onchange="loadClinics()"></select>
+                </div>
+                <div id="clinicsList" class="results"></div>
+            </div>
+        </div>
+        
+        <!--slots_tab-->
+        <div id="slots" class="tab-content">
+            <div class="section">
+                <h2>إضافة مواعيد متاحة</h2>
+                <div class="form-group">
+                    <label for="slotCenter">اختر المركز:</label>
+                    <select id="slotCenter" onchange="updateClinicsForSlots()"></select>
+                </div>
+                <div class="form-group">
+                    <label for="slotClinic">اختر العيادة:</label>
+                    <select id="slotClinic"></select>
+                </div>
+                <div class="form-group">
+                    <label for="slotDate">التاريخ:</label>
+                    <input type="date" id="slotDate">
+                </div>
+                <div class="form-group">
+                    <label for="slotStartTime">وقت البدء:</label>
+                    <input type="time" id="slotStartTime" value="08:00">
+                </div>
+                <div class="form-group">
+                    <label for="slotEndTime">وقت الانتهاء:</label>
+                    <input type="time" id="slotEndTime" value="17:00">
+                </div>
+                <div class="form-group">
+                    <label for="slotDuration">مدة الموعد (بالدقائق):</label>
+                    <input type="number" id="slotDuration" value="30" min="15" max="120">
+                </div>
+                <button onclick="addSlots()">إضافة مواعيد</button>
+                <div id="slotResult" class="results"></div>
+            </div>
+        </div>
+        
+        <!--appointments_tab-->
+        <div id="appointments" class="tab-content">
+            <div class="section">
+                <h2>جميع الحجوزات</h2>
+                <button onclick="loadAppointments()">تحديث الحجوزات</button>
+                <div id="appointmentsList" class="results"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        const API_BASE = '/api/admin';
+        let centers = [];
+        
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCentersForDropdowns();
+            loadCenters();
+        });
+        
+        // Tab management
+        function showTab(tabId) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        // Load centers for dropdowns
+        async function loadCentersForDropdowns() {
+            try {
+                const response = await fetch(`${API_BASE}/centers`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    centers = result.data;
+                    
+                    // Update dropdowns
+                    const centerDropdowns = [
+                        'clinicCenter', 'viewClinicCenter', 'slotCenter'
+                    ];
+                    
+                    centerDropdowns.forEach(dropdownId => {
+                        const dropdown = document.getElementById(dropdownId);
+                        dropdown.innerHTML = '';
+                        result.data.forEach(center => {
+                            const option = document.createElement('option');
+                            option.value = center.name;
+                            option.textContent = center.name;
+                            dropdown.appendChild(option);
+                        });
+                    });
+                    
+                    // Load clinics for the first center
+                    if (centers.length > 0) {
+                        loadClinics();
+                        updateClinicsForSlots();
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading centers:', error);
+            }
+        }
+        
+        // Add center
+        async function addCenter() {
+            const name = document.getElementById('centerName').value;
+            const address = document.getElementById('centerAddress').value;
+            const phone = document.getElementById('centerPhone').value;
+            
+            if (!name) {
+                alert('يرجى إدخال اسم المركز');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/centers`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name, address, phone })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('centerResult').innerHTML = 
+                        `<p class="success">تمت إضافة المركز بنجاح!</p>`;
+                    document.getElementById('centerName').value = '';
+                    document.getElementById('centerAddress').value = '';
+                    document.getElementById('centerPhone').value = '';
+                    
+                    // Refresh centers list
+                    loadCentersForDropdowns();
+                    loadCenters();
+                } else {
+                    document.getElementById('centerResult').innerHTML = 
+                        `<p class="error">خطأ: ${result.error}</p>`;
+                }
+            } catch (error) {
+                document.getElementById('centerResult').innerHTML = 
+                    `<p class="error">خطأ في الاتصال: ${error.message}</p>`;
+            }
+        }
+        
+        // Load centers
+        async function loadCenters() {
+            try {
+                const response = await fetch(`${API_BASE}/centers`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const centersList = document.getElementById('centersList');
+                    if (result.data.length === 0) {
+                        centersList.innerHTML = '<p>لا توجد مراكز صحية مسجلة</p>';
+                        return;
+                    }
+                    
+                    let html = '<table><tr><th>الاسم</th><th>العنوان</th><th>الهاتف</th><th>تاريخ الإنشاء</th></tr>';
+                    result.data.forEach(center => {
+                        html += `<tr>
+                            <td>${center.name}</td>
+                            <td>${center.address || 'غير محدد'}</td>
+                            <td>${center.phone || 'غير محدد'}</td>
+                            <td>${new Date(center.created_at).toLocaleDateString('ar-SA')}</td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+                    
+                    centersList.innerHTML = html;
+                } else {
+                    document.getElementById('centersList').innerHTML = 
+                        `<p class="error">خطأ: ${result.error}</p>`;
+                }
+            } catch (error) {
+                document.getElementById('centersList').innerHTML = 
+                    `<p class="error">خطأ في الاتصال: ${error.message}</p>`;
+            }
+        }
+        
+        // Add clinic
+        async function addClinic() {
+            const centerName = document.getElementById('clinicCenter').value;
+            const name = document.getElementById('clinicName').value;
+            const description = document.getElementById('clinicDescription').value;
+            
+            if (!centerName || !name) {
+                alert('يرجى ملء جميع الحقول المطلوبة');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/clinics`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name, centerName, description })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('clinicResult').innerHTML = 
+                        `<p class="success">تمت إضافة العيادة بنجاح!</p>`;
+                    document.getElementById('clinicName').value = '';
+                    document.getElementById('clinicDescription').value = '';
+                    
+                    // Refresh clinics list
+                    loadClinics();
+                } else {
+                    document.getElementById('clinicResult').innerHTML = 
+                        `<p class="error">خطأ: ${result.error}</p>`;
+                }
+            } catch (error) {
+                document.getElementById('clinicResult').innerHTML = 
+                    `<p class="error">خطأ في الاتصال: ${error.message}</p>`;
+            }
+        }
+        
+        // Load clinics
+        async function loadClinics() {
+            const centerName = document.getElementById('viewClinicCenter').value;
+            
+            if (!centerName) {
+                document.getElementById('clinicsList').innerHTML = '<p>يرجى اختيار مركز صحي</p>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/clinics/${encodeURIComponent(centerName)}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const clinicsList = document.getElementById('clinicsList');
+                    if (result.data.length === 0) {
+                        clinicsList.innerHTML = '<p>لا توجد عيادات مسجلة لهذا المركز</p>';
+                        return;
+                    }
+                    
+                    let html = '<table><tr><th>الاسم</th><th>الوصف</th><th>تاريخ الإنشاء</th></tr>';
+                    result.data.forEach(clinic => {
+                        html += `<tr>
+                            <td>${clinic.name}</td>
+                            <td>${clinic.description || 'غير محدد'}</td>
+                            <td>${new Date(clinic.created_at).toLocaleDateString('ar-SA')}</td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+                    
+                    clinicsList.innerHTML = html;
+                } else {
+                    document.getElementById('clinicsList').innerHTML = 
+                        `<p class="error">خطأ: ${result.error}</p>`;
+                }
+            } catch (error) {
+                document.getElementById('clinicsList').innerHTML = 
+                    `<p class="error">خطأ في الاتصال: ${error.message}</p>`;
+            }
+        }
+        
+        // Update clinics for slots dropdown
+        async function updateClinicsForSlots() {
+            const centerName = document.getElementById('slotCenter').value;
+            
+            if (!centerName) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/clinics/${encodeURIComponent(centerName)}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const clinicDropdown = document.getElementById('slotClinic');
+                    clinicDropdown.innerHTML = '';
+                    result.data.forEach(clinic => {
+                        const option = document.createElement('option');
+                        option.value = clinic.name;
+                        option.textContent = clinic.name;
+                        clinicDropdown.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading clinics for slots:', error);
+            }
+        }
+        
+        // Add time slots
+        async function addSlots() {
+            const centerName = document.getElementById('slotCenter').value;
+            const clinicName = document.getElementById('slotClinic').value;
+            const date = document.getElementById('slotDate').value;
+            const startTime = document.getElementById('slotStartTime').value;
+            const endTime = document.getElementById('slotEndTime').value;
+            const duration = document.getElementById('slotDuration').value;
+            
+            if (!centerName || !clinicName || !date || !startTime || !endTime) {
+                alert('يرجى ملء جميع الحقول المطلوبة');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/slots`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        clinicName, 
+                        centerName, 
+                        date, 
+                        startTime, 
+                        endTime, 
+                        duration: parseInt(duration)
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('slotResult').innerHTML = 
+                        `<p class="success">تمت إضافة ${result.data.length} موعد متاح!</p>`;
+                } else {
+                    document.getElementById('slotResult').innerHTML = 
+                        `<p class="error">خطأ: ${result.error}</p>`;
+                }
+            } catch (error) {
+                document.getElementById('slotResult').innerHTML = 
+                    `<p class="error">خطأ في الاتصال: ${error.message}</p>`;
+            }
+        }
+        
+        // Load appointments
+        async function loadAppointments() {
+            try {
+                const response = await fetch(`${API_BASE}/appointments`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const appointmentsList = document.getElementById('appointmentsList');
+                    if (result.data.length === 0) {
+                        appointmentsList.innerHTML = '<p>لا توجد حجوزات مسجلة</p>';
+                        return;
+                    }
+                    
+                    let html = `<table>
+                        <tr>
+                            <th>اسم المريض</th>
+                            <th>العمر</th>
+                            <th>المركز</th>
+                            <th>العيادة</th>
+                            <th>التاريخ</th>
+                            <th>الوقت</th>
+                            <th>الحالة</th>
+                        </tr>`;
+                    
+                    result.data.forEach(appointment => {
+                        html += `<tr>
+                            <td>${appointment.patientName}</td>
+                            <td>${appointment.patientAge}</td>
+                            <td>${appointment.center}</td>
+                            <td>${appointment.clinic}</td>
+                            <td>${appointment.date}</td>
+                            <td>${appointment.time}</td>
+                            <td>${appointment.status}</td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+                    
+                    appointmentsList.innerHTML = html;
+                } else {
+                    document.getElementById('appointmentsList').innerHTML = 
+                        `<p class="error">خطأ: ${result.error}</p>`;
+                }
+            } catch (error) {
+                document.getElementById('appointmentsList').innerHTML = 
+                    `<p class="error">خطأ في الاتصال: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>

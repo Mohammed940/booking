@@ -1,14 +1,30 @@
 {
   "version": 2,
-  "functions": {
-    "api/bot.js": {
-      "memory": 1024,
-      "maxDuration": 10
+  "builds": [
+    {
+      "src": "api/bot.js",
+      "use": "@vercel/node"
     }
-  },
+  ],
   "routes": [
     {
+      "src": "/webhook",
+      "dest": "/api/bot"
+    },
+    {
       "src": "/api/bot",
+      "dest": "/api/bot.js"
+    },
+    {
+      "src": "/api/admin/(.*)",
+      "dest": "/api/bot.js"
+    },
+    {
+      "src": "/api/reminders/(.*)",
+      "dest": "/api/bot.js"
+    },
+    {
+      "src": "/health",
       "dest": "/api/bot.js"
     }
   ]

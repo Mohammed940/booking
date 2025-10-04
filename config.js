@@ -1,57 +1,28 @@
 // Configuration file for the Medical Booking Bot
 // Store all sensitive information and settings here
 
-// Load Google credentials from environment variable first, then from file if specified
-let googleCredentials = null;
-
-// First try to load from GOOGLE_APPLICATION_CREDENTIALS_BASE64 environment variable (for Vercel)
-if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
-  try {
-    const credentialsBuffer = Buffer.from(process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64, 'base64');
-    googleCredentials = JSON.parse(credentialsBuffer.toString('utf-8'));
-  } catch (error) {
-    console.error('Error parsing Google credentials from base64 environment variable:', error);
-  }
-}
-// Then try to load from GOOGLE_CREDENTIALS environment variable
-else if (process.env.GOOGLE_CREDENTIALS && process.env.GOOGLE_CREDENTIALS !== 'your_google_credentials_json_here') {
-  try {
-    googleCredentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
-  } catch (error) {
-    console.error('Error parsing Google credentials from environment variable:', error);
-  }
-} 
-// If that fails, try to load from file
-else if (process.env.GOOGLE_CREDENTIALS_FILE) {
-  try {
-    googleCredentials = require(process.env.GOOGLE_CREDENTIALS_FILE);
-    // Check if the credentials are placeholder values
-    if (googleCredentials.project_id === 'your-project-id' || 
-        googleCredentials.client_email.includes('your-service-account')) {
-      console.warn('Warning: Google credentials file contains placeholder values. Google Sheets integration will not work.');
-      googleCredentials = null;
-    }
-  } catch (error) {
-    console.warn('Warning: Could not load Google credentials from file:', error.message);
-  }
-}
-
 module.exports = {
   // Telegram Bot Token - Get this from @BotFather on Telegram
   TELEGRAM_TOKEN: process.env.TELEGRAM_TOKEN || 'YOUR_TELEGRAM_BOT_TOKEN_HERE',
   
-  // Google Sheets configuration
-  GOOGLE_SHEETS: {
-    // ID of your Google Sheet (found in the URL of your spreadsheet)
-    SPREADSHEET_ID: process.env.SPREADSHEET_ID || 'YOUR_SPREADSHEET_ID_HERE',
+  // Supabase configuration
+  SUPABASE: {
+    // URL of your Supabase project
+    URL: process.env.SUPABASE_URL || 'YOUR_SUPABASE_PROJECT_URL_HERE',
     
-    // Credentials for Google Sheets API
-    CREDENTIALS: googleCredentials
+    // API Key for your Supabase project
+    KEY: process.env.SUPABASE_KEY || 'YOUR_SUPABASE_ANON_KEY_HERE'
   },
   
   // Timezone configuration
   TIMEZONE: process.env.TIMEZONE || 'Asia/Riyadh', // UTC+3
   
   // Reminder settings
-  REMINDER_MINUTES_BEFORE: 120, // 2 hours before appointment
+  REMINDER_MINUTES_BEFORE: process.env.REMINDER_MINUTES_BEFORE || 120, // 2 hours before appointment
+  
+  // Admin Chat ID for notifications
+  ADMIN_CHAT_ID: process.env.ADMIN_CHAT_ID || null,
+  
+  // Reminder service settings
+  REMINDER_CHECK_INTERVAL: process.env.REMINDER_CHECK_INTERVAL || 60000 // 1 minute
 };

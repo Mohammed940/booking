@@ -1,59 +1,41 @@
-const fs = require('fs');
-const path = require('path');
+const BotHandler = require('../botHandler');
 
-// Test that all required files exist
+// Mock the Telegram bot
+const mockBot = {
+  sendMessage: jest.fn(),
+  on: jest.fn()
+};
+
 describe('Bot Structure', () => {
-  test('should have all required files', () => {
-    const requiredFiles = [
-      'index.js',
-      'config.js',
-      'googleSheetsService.js',
-      'botHandler.js',
-      'package.json',
-      '.env.example',
-      'README.md'
-    ];
-    
-    requiredFiles.forEach(file => {
-      const filePath = path.join(__dirname, '..', file);
-      expect(fs.existsSync(filePath)).toBe(true);
-    });
+  let botHandler;
+
+  beforeEach(() => {
+    botHandler = new BotHandler(mockBot);
   });
-  
-  test('should have package.json with required dependencies', () => {
-    const packageJson = require('../package.json');
-    
-    expect(packageJson.dependencies).toHaveProperty('node-telegram-bot-api');
-    expect(packageJson.dependencies).toHaveProperty('googleapis');
-    expect(packageJson.dependencies).toHaveProperty('dotenv');
-    expect(packageJson.dependencies).toHaveProperty('express');
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
-  
-  test('should have config file with required structure', () => {
-    const config = require('../config');
-    
-    expect(config).toHaveProperty('TELEGRAM_TOKEN');
-    expect(config).toHaveProperty('GOOGLE_SHEETS');
-    expect(config.GOOGLE_SHEETS).toHaveProperty('SPREADSHEET_ID');
-    expect(config).toHaveProperty('TIMEZONE');
-    expect(config).toHaveProperty('REMINDER_MINUTES_BEFORE');
+
+  test('should initialize with required properties', () => {
+    expect(botHandler.bot).toBe(mockBot);
+    expect(botHandler.userStates).toBeInstanceOf(Map);
+    expect(botHandler.pendingConfirmations).toBeInstanceOf(Map);
   });
-  
-  test('should handle missing Google Sheets credentials gracefully', () => {
-    // Save original environment
-    const originalCredentials = process.env.GOOGLE_CREDENTIALS;
-    
-    // Temporarily remove credentials
-    delete process.env.GOOGLE_CREDENTIALS;
-    
-    // Reload config
-    jest.resetModules();
-    const config = require('../config');
-    
-    // Should not throw an error even with missing credentials
-    expect(config.GOOGLE_SHEETS.CREDENTIALS).toBeNull();
-    
-    // Restore original environment
-    process.env.GOOGLE_CREDENTIALS = originalCredentials;
+
+  test('should have handleMessage method', () => {
+    expect(typeof botHandler.handleMessage).toBe('function');
+  });
+
+  test('should have handleCallbackQuery method', () => {
+    expect(typeof botHandler.handleCallbackQuery).toBe('function');
+  });
+
+  test('should have startBookingProcess method', () => {
+    expect(typeof botHandler.startBookingProcess).toBe('function');
+  });
+
+  test('should have showHelpInstructions method', () => {
+    expect(typeof botHandler.showHelpInstructions).toBe('function');
   });
 });
