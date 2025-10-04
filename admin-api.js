@@ -7,19 +7,25 @@ const { ADMIN_CHAT_ID } = require('./config');
 
 // Middleware for admin authentication
 const authenticateAdmin = (req, res, next) => {
-  // In a real implementation, you would check for a valid admin session or token
-  // For now, we'll allow access for demonstration purposes
-  // You can implement proper authentication using JWT or session-based auth
-  
   // Check if ADMIN_CHAT_ID is set and matches (basic check)
   const adminId = req.headers['x-admin-id'] || req.query.adminId;
-  if (ADMIN_CHAT_ID && adminId === ADMIN_CHAT_ID) {
-    next();
-  } else if (!ADMIN_CHAT_ID) {
-    // If no ADMIN_CHAT_ID is set, allow access (development mode)
+  
+  // If ADMIN_CHAT_ID is set in config, it must match the provided adminId
+  if (ADMIN_CHAT_ID) {
+    if (adminId === ADMIN_CHAT_ID) {
+      next();
+    } else {
+      res.status(401).json({ success: false, error: 'Unauthorized access' });
+    }
+  } else if (adminId) {
+    // If no ADMIN_CHAT_ID is set in config but adminId is provided, allow access
+    // This is useful for development/testing but should be avoided in production
+    console.warn('ADMIN_CHAT_ID not set in config - allowing access with provided adminId (INSECURE)');
     next();
   } else {
-    res.status(401).json({ success: false, error: 'Unauthorized access' });
+    // If neither ADMIN_CHAT_ID is set in config nor adminId is provided
+    console.warn('ADMIN_CHAT_ID not set and no adminId provided - allowing all admin access (INSECURE)');
+    next();
   }
 };
 

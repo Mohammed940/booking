@@ -114,6 +114,12 @@ app.get('/api/bot', (req, res) => {
   });
 });
 
+// Root endpoint - serve admin panel
+app.get('/', (req, res) => {
+  const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+  res.redirect('/admin-panel.html');
+});
+
 // Admin panel HTML endpoint
 app.get('/admin-panel.html', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/admin-panel.html'));

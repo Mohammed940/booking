@@ -24,6 +24,14 @@
       "dest": "/api/bot.js"
     },
     {
+      "src": "/admin-panel.html",
+      "dest": "/api/bot.js"
+    },
+    {
+      "src": "/",
+      "dest": "/api/bot.js"
+    },
+    {
       "src": "/health",
       "dest": "/api/bot.js"
     }

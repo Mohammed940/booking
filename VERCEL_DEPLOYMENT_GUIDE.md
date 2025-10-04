@@ -27,6 +27,17 @@ NODE_ENV=production
 5. Add all environment variables mentioned above
 6. Deploy!
 
+## Accessing the Admin Panel
+
+After deployment, you can access the admin panel through:
+
+1. Visit your Vercel deployment URL (e.g., `https://your-project.vercel.app`) - you'll be redirected to the admin panel
+2. Or visit directly: `https://your-project.vercel.app/admin-panel.html`
+
+To use the admin API endpoints, you'll need to include your ADMIN_CHAT_ID in requests:
+- As a header: `x-admin-id: YOUR_ADMIN_CHAT_ID`
+- Or as a query parameter: `?adminId=YOUR_ADMIN_CHAT_ID`
+
 ## Webhook Configuration
 
 After deployment:
@@ -67,3 +78,15 @@ This reduces the number of Supabase database calls and improves response time.
 2. Verify environment variables are correctly set
 3. Ensure Supabase credentials have proper permissions
 4. Check that your database tables are correctly set up
+
+### Admin Panel Access Issues
+
+If you're getting a 404 error when trying to access the admin panel:
+1. Make sure you've redeployed your application after the latest changes
+2. Check that your vercel.json file includes proper routing for the admin panel
+3. Verify that the admin-panel.html file exists in the public directory
+
+If you're getting "Unauthorized access" when trying to use admin API endpoints:
+1. Make sure your ADMIN_CHAT_ID environment variable is set correctly in Vercel
+2. Verify that your ADMIN_CHAT_ID matches the chat ID from your Telegram conversation with the bot
+3. You can find your chat ID by sending a message to your bot and checking the logs
