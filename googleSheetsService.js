@@ -40,13 +40,13 @@ class GoogleSheetsService {
         slots: new Map() // Cache slots by center+clinic
       };
       
-      // Cache expiration time (2 minutes for Vercel environment)
-      this.CACHE_EXPIRATION = 2 * 60 * 1000;
+      // Cache expiration time (1 minute for better responsiveness)
+      this.CACHE_EXPIRATION = 1 * 60 * 1000;
       
-      // Flag to track if we're currently loading data
-      this.loading = {
-        fullData: false,
-        centers: false,
+      // Promise tracking for ongoing requests
+      this.pendingRequests = {
+        fullData: null,
+        centers: null,
         clinics: new Map()
       };
     } catch (error) {
@@ -66,7 +66,7 @@ class GoogleSheetsService {
    * Load all data from spreadsheet into cache
    */
   async loadFullDataIntoCache() {
-    if (this.disabled) return;
+    if (this.disabled) return [];
     
     try {
       // If cache is still valid, return cached data
@@ -74,49 +74,54 @@ class GoogleSheetsService {
         return this.cache.fullData;
       }
       
-      // If we're already loading data, wait for it to complete
-      if (this.loading.fullData) {
-        // Wait until loading is complete
-        while (this.loading.fullData) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
-        // Return the cached data
-        return this.cache.fullData;
+      // If we're already loading data, return the pending promise
+      if (this.pendingRequests.fullData) {
+        return await this.pendingRequests.fullData;
       }
       
-      // Set loading flag
-      this.loading.fullData = true;
+      // Create a new promise for loading data
+      this.pendingRequests.fullData = this._fetchFullData();
       
-      console.log('Loading full data from Google Sheets...');
-      const response = await this.sheets.spreadsheets.values.get({
-        spreadsheetId: this.spreadsheetId,
-        range: 'A:F', // Get all relevant columns
-      });
+      // Wait for data to load
+      const result = await this.pendingRequests.fullData;
       
-      const rows = response.data.values || [];
-      this.cache.fullData = rows;
-      this.cache.fullDataTimestamp = Date.now();
+      // Clear the pending request
+      this.pendingRequests.fullData = null;
       
-      // Also populate centers and clinics cache from this data
-      this.populateCentersAndClinicsCache(rows);
-      
-      // Clear loading flag
-      this.loading.fullData = false;
-      
-      return rows;
+      return result;
     } catch (error) {
-      // Clear loading flag on error
-      this.loading.fullData = false;
+      // Clear the pending request on error
+      this.pendingRequests.fullData = null;
       console.error('Error loading full data into cache:', error);
       throw error;
     }
+  }
+  
+  /**
+   * Internal method to fetch full data
+   */
+  async _fetchFullData() {
+    console.log('Loading full data from Google Sheets...');
+    const response = await this.sheets.spreadsheets.values.get({
+      spreadsheetId: this.spreadsheetId,
+      range: 'A:F', // Get all relevant columns
+    });
+    
+    const rows = response.data.values || [];
+    this.cache.fullData = rows;
+    this.cache.fullDataTimestamp = Date.now();
+    
+    // Also populate centers and clinics cache from this data
+    this.populateCentersAndClinicsCache(rows);
+    
+    return rows;
   }
 
   /**
    * Load only centers data (more efficient for getting centers only)
    */
   async loadCentersData() {
-    if (this.disabled) return;
+    if (this.disabled) return [];
     
     try {
       // If cache is still valid, return cached data
@@ -124,51 +129,56 @@ class GoogleSheetsService {
         return this.cache.centers;
       }
       
-      // If we're already loading data, wait for it to complete
-      if (this.loading.centers) {
-        // Wait until loading is complete
-        while (this.loading.centers) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
-        // Return the cached data
-        return this.cache.centers;
+      // If we're already loading data, return the pending promise
+      if (this.pendingRequests.centers) {
+        return await this.pendingRequests.centers;
       }
       
-      // Set loading flag
-      this.loading.centers = true;
+      // Create a new promise for loading data
+      this.pendingRequests.centers = this._fetchCentersData();
       
-      console.log('Loading centers data from Google Sheets...');
-      const response = await this.sheets.spreadsheets.values.get({
-        spreadsheetId: this.spreadsheetId,
-        range: 'A:B', // Get only center and clinic columns
-      });
+      // Wait for data to load
+      const result = await this.pendingRequests.centers;
       
-      const rows = response.data.values || [];
+      // Clear the pending request
+      this.pendingRequests.centers = null;
       
-      // Extract unique centers
-      const centers = [...new Set(rows.slice(1).map(row => row[0]).filter(center => center))];
-      
-      // Update cache
-      this.cache.centers = centers;
-      this.cache.centersTimestamp = Date.now();
-      
-      // Clear loading flag
-      this.loading.centers = false;
-      
-      return centers;
+      return result;
     } catch (error) {
-      // Clear loading flag on error
-      this.loading.centers = false;
+      // Clear the pending request on error
+      this.pendingRequests.centers = null;
       console.error('Error loading centers data:', error);
       throw error;
     }
+  }
+  
+  /**
+   * Internal method to fetch centers data
+   */
+  async _fetchCentersData() {
+    console.log('Loading centers data from Google Sheets...');
+    const response = await this.sheets.spreadsheets.values.get({
+      spreadsheetId: this.spreadsheetId,
+      range: 'A:B', // Get only center and clinic columns
+    });
+    
+    const rows = response.data.values || [];
+    
+    // Extract unique centers
+    const centers = [...new Set(rows.slice(1).map(row => row[0]).filter(center => center))];
+    
+    // Update cache
+    this.cache.centers = centers;
+    this.cache.centersTimestamp = Date.now();
+    
+    return centers;
   }
 
   /**
    * Load clinics for a specific center
    */
   async loadClinicsForCenter(centerName) {
-    if (this.disabled) return;
+    if (this.disabled) return [];
     
     try {
       // Check if we have cached data for this center
@@ -180,52 +190,57 @@ class GoogleSheetsService {
       }
       
       // Check if we're already loading data for this center
-      if (this.loading.clinics.has(centerName)) {
-        // Wait until loading is complete
-        while (this.loading.clinics.has(centerName)) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
-        // Return the cached data
-        const cached = this.cache.clinics.get(centerName);
-        return cached ? [...cached] : [];
+      if (this.pendingRequests.clinics.has(centerName)) {
+        return await this.pendingRequests.clinics.get(centerName);
       }
       
-      // Set loading flag
-      this.loading.clinics.set(centerName, true);
+      // Create a new promise for loading data
+      const promise = this._fetchClinicsForCenter(centerName);
+      this.pendingRequests.clinics.set(centerName, promise);
       
-      console.log(`Loading clinics for center: ${centerName}`);
-      const response = await this.sheets.spreadsheets.values.get({
-        spreadsheetId: this.spreadsheetId,
-        range: 'A:B', // Get only center and clinic columns
-      });
+      // Wait for data to load
+      const result = await promise;
       
-      const rows = response.data.values || [];
+      // Clear the pending request
+      this.pendingRequests.clinics.delete(centerName);
       
-      // Extract clinics for this center
-      const clinics = new Set();
-      
-      // Skip header row (index 0) and process all rows
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        if (row[0] === centerName && row[1]) {
-          clinics.add(row[1]);
-        }
-      }
-      
-      // Update cache
-      this.cache.clinics.set(centerName, clinics);
-      this.cache.clinicsTimestamps.set(centerName, Date.now());
-      
-      // Clear loading flag
-      this.loading.clinics.delete(centerName);
-      
-      return [...clinics];
+      return result;
     } catch (error) {
-      // Clear loading flag on error
-      this.loading.clinics.delete(centerName);
+      // Clear the pending request on error
+      this.pendingRequests.clinics.delete(centerName);
       console.error(`Error loading clinics for center ${centerName}:`, error);
       throw error;
     }
+  }
+  
+  /**
+   * Internal method to fetch clinics for a center
+   */
+  async _fetchClinicsForCenter(centerName) {
+    console.log(`Loading clinics for center: ${centerName}`);
+    const response = await this.sheets.spreadsheets.values.get({
+      spreadsheetId: this.spreadsheetId,
+      range: 'A:B', // Get only center and clinic columns
+    });
+    
+    const rows = response.data.values || [];
+    
+    // Extract clinics for this center
+    const clinics = new Set();
+    
+    // Skip header row (index 0) and process all rows
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (row[0] === centerName && row[1]) {
+        clinics.add(row[1]);
+      }
+    }
+    
+    // Update cache
+    this.cache.clinics.set(centerName, clinics);
+    this.cache.clinicsTimestamps.set(centerName, Date.now());
+    
+    return [...clinics];
   }
 
   /**
@@ -445,6 +460,11 @@ class GoogleSheetsService {
     this.cache.fullData = null;
     this.cache.fullDataTimestamp = 0;
     this.cache.slots.clear();
+    
+    // Clear pending requests
+    this.pendingRequests.centers = null;
+    this.pendingRequests.fullData = null;
+    this.pendingRequests.clinics.clear();
   }
 
   /**

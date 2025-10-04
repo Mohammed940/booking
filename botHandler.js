@@ -16,6 +16,10 @@ class BotHandler {
     // Track processed updates to prevent duplicate processing
     this.processedUpdates = new Set();
     this.maxProcessedUpdates = 1000; // Limit size to prevent memory issues
+    
+    // Track active requests to prevent flooding
+    this.activeRequests = new Map();
+    this.requestTimeout = 30000; // 30 seconds timeout
   }
 
   /**
@@ -234,6 +238,20 @@ class BotHandler {
    * Start the booking process
    */
   async startBookingProcess(chatId) {
+    // Check if there's already an active request for this user
+    const activeRequestKey = `centers-${chatId}`;
+    if (this.activeRequests.has(activeRequestKey)) {
+      // Send a waiting message
+      await this.bot.sendMessage(
+        chatId,
+        '⏳ جاري تحميل المراكز الصحية، يرجى الانتظار...'
+      );
+      return;
+    }
+    
+    // Set active request
+    this.activeRequests.set(activeRequestKey, true);
+    
     try {
       // Send welcome message immediately
       await this.bot.sendMessage(
@@ -286,6 +304,9 @@ class BotHandler {
       }
       
       await this.bot.sendMessage(chatId, errorMessage);
+    } finally {
+      // Clear active request
+      this.activeRequests.delete(activeRequestKey);
     }
   }
 
@@ -293,6 +314,20 @@ class BotHandler {
    * Handle center selection
    */
   async handleCenterSelection(chatId, centerName) {
+    // Check if there's already an active request for this user
+    const activeRequestKey = `clinics-${chatId}-${centerName}`;
+    if (this.activeRequests.has(activeRequestKey)) {
+      // Send a waiting message
+      await this.bot.sendMessage(
+        chatId,
+        '⏳ جاري تحميل العيادات، يرجى الانتظار...'
+      );
+      return;
+    }
+    
+    // Set active request
+    this.activeRequests.set(activeRequestKey, true);
+    
     try {
       console.log(`User ${chatId} selected center: ${centerName}`);
       
@@ -354,6 +389,9 @@ class BotHandler {
         chatId,
         errorMessage
       );
+    } finally {
+      // Clear active request
+      this.activeRequests.delete(activeRequestKey);
     }
   }
 
