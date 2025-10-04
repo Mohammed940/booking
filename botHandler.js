@@ -210,13 +210,13 @@ class BotHandler {
    */
   async startBookingProcess(chatId) {
     try {
-      // Send welcome message
+      // Send welcome message immediately
       await this.bot.sendMessage(
         chatId,
         '🩺 مرحباً بك في نظام حجز المواعيد الطبية!\nيرجى اختيار المركز الصحي:'
       );
       
-      // Get medical centers
+      // Get medical centers (will use cached data if available)
       const centers = await this.sheetsService.getMedicalCenters();
       
       if (centers.length === 0) {
@@ -277,7 +277,7 @@ class BotHandler {
         return;
       }
       
-      // Get clinics for the selected center
+      // Get clinics for the selected center (will use cached data if available)
       console.log(`Fetching clinics for center: ${centerName}`);
       const clinics = await this.sheetsService.getClinicsForCenter(centerName);
       console.log(`Found ${clinics.length} clinics for center ${centerName}:`, clinics);
@@ -345,7 +345,7 @@ class BotHandler {
         return;
       }
       
-      // Get available time slots for tomorrow
+      // Get available time slots for tomorrow (will use cached data if available)
       console.log(`Fetching time slots for clinic: ${clinicName} at center: ${centerName}`);
       const tomorrow = this.sheetsService.getTomorrowDate();
       console.log(`Looking for appointments for tomorrow's date: ${tomorrow}`);

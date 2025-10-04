@@ -25,8 +25,8 @@ describe('Bot Structure', () => {
     
     expect(packageJson.dependencies).toHaveProperty('node-telegram-bot-api');
     expect(packageJson.dependencies).toHaveProperty('googleapis');
-    expect(packageJson.dependencies).toHaveProperty('node-cron');
     expect(packageJson.dependencies).toHaveProperty('dotenv');
+    expect(packageJson.dependencies).toHaveProperty('express');
   });
   
   test('should have config file with required structure', () => {
