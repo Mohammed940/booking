@@ -36,14 +36,19 @@ class GoogleSheetsService {
         clinics: new Map(), // Cache clinics by center
         clinicsTimestamps: new Map(),
         fullData: null, // Cache all data
-        fullDataTimestamp: 0
+        fullDataTimestamp: 0,
+        slots: new Map() // Cache slots by center+clinic
       };
       
       // Cache expiration time (5 minutes)
       this.CACHE_EXPIRATION = 5 * 60 * 1000;
       
       // Flag to track if we're currently loading data
-      this.loading = false;
+      this.loading = {
+        fullData: false,
+        centers: false,
+        clinics: new Map()
+      };
     } catch (error) {
       console.error('Error initializing Google Sheets client:', error);
       throw new Error('Failed to initialize Google Sheets client. Please check your credentials.');
@@ -70,17 +75,17 @@ class GoogleSheetsService {
       }
       
       // If we're already loading data, wait for it to complete
-      if (this.loading) {
+      if (this.loading.fullData) {
         // Wait until loading is complete
-        while (this.loading) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+        while (this.loading.fullData) {
+          await new Promise(resolve => setTimeout(resolve, 50));
         }
         // Return the cached data
         return this.cache.fullData;
       }
       
       // Set loading flag
-      this.loading = true;
+      this.loading.fullData = true;
       
       console.log('Loading full data from Google Sheets...');
       const response = await this.sheets.spreadsheets.values.get({
@@ -96,13 +101,129 @@ class GoogleSheetsService {
       this.populateCentersAndClinicsCache(rows);
       
       // Clear loading flag
-      this.loading = false;
+      this.loading.fullData = false;
       
       return rows;
     } catch (error) {
       // Clear loading flag on error
-      this.loading = false;
+      this.loading.fullData = false;
       console.error('Error loading full data into cache:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Load only centers data (more efficient for getting centers only)
+   */
+  async loadCentersData() {
+    if (this.disabled) return;
+    
+    try {
+      // If cache is still valid, return cached data
+      if (this.cache.centers && !this.isCacheExpired(this.cache.centersTimestamp)) {
+        return this.cache.centers;
+      }
+      
+      // If we're already loading data, wait for it to complete
+      if (this.loading.centers) {
+        // Wait until loading is complete
+        while (this.loading.centers) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        // Return the cached data
+        return this.cache.centers;
+      }
+      
+      // Set loading flag
+      this.loading.centers = true;
+      
+      console.log('Loading centers data from Google Sheets...');
+      const response = await this.sheets.spreadsheets.values.get({
+        spreadsheetId: this.spreadsheetId,
+        range: 'A:B', // Get only center and clinic columns
+      });
+      
+      const rows = response.data.values || [];
+      
+      // Extract unique centers
+      const centers = [...new Set(rows.slice(1).map(row => row[0]).filter(center => center))];
+      
+      // Update cache
+      this.cache.centers = centers;
+      this.cache.centersTimestamp = Date.now();
+      
+      // Clear loading flag
+      this.loading.centers = false;
+      
+      return centers;
+    } catch (error) {
+      // Clear loading flag on error
+      this.loading.centers = false;
+      console.error('Error loading centers data:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Load clinics for a specific center
+   */
+  async loadClinicsForCenter(centerName) {
+    if (this.disabled) return;
+    
+    try {
+      // Check if we have cached data for this center
+      const cachedClinics = this.cache.clinics.get(centerName);
+      const timestamp = this.cache.clinicsTimestamps.get(centerName);
+      
+      if (cachedClinics && timestamp && !this.isCacheExpired(timestamp)) {
+        return [...cachedClinics];
+      }
+      
+      // Check if we're already loading data for this center
+      if (this.loading.clinics.has(centerName)) {
+        // Wait until loading is complete
+        while (this.loading.clinics.has(centerName)) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        // Return the cached data
+        const cached = this.cache.clinics.get(centerName);
+        return cached ? [...cached] : [];
+      }
+      
+      // Set loading flag
+      this.loading.clinics.set(centerName, true);
+      
+      console.log(`Loading clinics for center: ${centerName}`);
+      const response = await this.sheets.spreadsheets.values.get({
+        spreadsheetId: this.spreadsheetId,
+        range: 'A:B', // Get only center and clinic columns
+      });
+      
+      const rows = response.data.values || [];
+      
+      // Extract clinics for this center
+      const clinics = new Set();
+      
+      // Skip header row (index 0) and process all rows
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (row[0] === centerName && row[1]) {
+          clinics.add(row[1]);
+        }
+      }
+      
+      // Update cache
+      this.cache.clinics.set(centerName, clinics);
+      this.cache.clinicsTimestamps.set(centerName, Date.now());
+      
+      // Clear loading flag
+      this.loading.clinics.delete(centerName);
+      
+      return [...clinics];
+    } catch (error) {
+      // Clear loading flag on error
+      this.loading.clinics.delete(centerName);
+      console.error(`Error loading clinics for center ${centerName}:`, error);
       throw error;
     }
   }
@@ -157,11 +278,10 @@ class GoogleSheetsService {
     }
     
     try {
-      // Load full data into cache (will use cached data if still valid)
-      await this.loadFullDataIntoCache();
+      // Load only centers data (more efficient)
+      const centers = await this.loadCentersData();
       
-      // Return cached centers
-      return this.cache.centers || [];
+      return centers || [];
     } catch (error) {
       console.error('Error getting medical centers:', error);
       
@@ -192,12 +312,10 @@ class GoogleSheetsService {
     try {
       console.log(`Fetching clinics for center: ${centerName}`);
       
-      // Load full data into cache (will use cached data if still valid)
-      await this.loadFullDataIntoCache();
+      // Load clinics for this specific center
+      const clinics = await this.loadClinicsForCenter(centerName);
       
-      // Return cached clinics for this center
-      const clinics = this.cache.clinics.get(centerName);
-      return clinics ? [...clinics] : [];
+      return clinics;
     } catch (error) {
       console.error('Error getting clinics:', error);
       throw error;
@@ -222,10 +340,24 @@ class GoogleSheetsService {
     try {
       console.log(`Fetching time slots for center: ${centerName}, clinic: ${clinicName}`);
       
-      // Load full data into cache (will use cached data if still valid)
-      const rows = await this.loadFullDataIntoCache();
-      
+      // Create cache key
+      const cacheKey = `${centerName}|${clinicName}`;
       const tomorrow = this.getTomorrowDate();
+      
+      // Check if we have cached data for this center+clinic combination
+      const cachedSlots = this.cache.slots.get(cacheKey);
+      if (cachedSlots && !this.isCacheExpired(cachedSlots.timestamp)) {
+        // Filter for tomorrow's date
+        return cachedSlots.data.filter(slot => slot.date === tomorrow);
+      }
+      
+      // Fetch data directly for this center and clinic (more efficient)
+      const response = await this.sheets.spreadsheets.values.get({
+        spreadsheetId: this.spreadsheetId,
+        range: 'A:F', // Get all relevant columns
+      });
+      
+      const rows = response.data.values || [];
       console.log(`Looking for appointments for tomorrow's date: ${tomorrow}`);
       const availableSlots = [];
       
@@ -256,6 +388,12 @@ class GoogleSheetsService {
           });
         }
       }
+      
+      // Cache the results
+      this.cache.slots.set(cacheKey, {
+        data: availableSlots,
+        timestamp: Date.now()
+      });
       
       console.log(`Found ${availableSlots.length} available slots`);
       return availableSlots;
@@ -306,6 +444,7 @@ class GoogleSheetsService {
     this.cache.clinicsTimestamps.clear();
     this.cache.fullData = null;
     this.cache.fullDataTimestamp = 0;
+    this.cache.slots.clear();
   }
 
   /**
@@ -362,12 +501,9 @@ class GoogleSheetsService {
     }
     
     try {
-      const response = await this.sheets.spreadsheets.values.get({
-        spreadsheetId: this.spreadsheetId,
-        range: 'A:F', // Get all data
-      });
+      // Load full data into cache (will use cached data if still valid)
+      const rows = await this.loadFullDataIntoCache();
       
-      const rows = response.data.values || [];
       const appointments = [];
       
       // Skip header row and filter for matching chat ID
