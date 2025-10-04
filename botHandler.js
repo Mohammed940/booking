@@ -241,26 +241,40 @@ class BotHandler {
     // Check if there's already an active request for this user
     const activeRequestKey = `centers-${chatId}`;
     if (this.activeRequests.has(activeRequestKey)) {
-      // Send a waiting message
-      await this.bot.sendMessage(
-        chatId,
-        '⏳ جاري تحميل المراكز الصحية، يرجى الانتظار...'
-      );
-      return;
+      // Check if the request has timed out (older than 30 seconds)
+      const requestTime = this.activeRequests.get(activeRequestKey);
+      const timeElapsed = Date.now() - requestTime;
+      console.log(`Active request found for user ${chatId}, time elapsed: ${timeElapsed}ms`);
+      
+      if (timeElapsed < 30000) { // 30 seconds timeout
+        // Send a waiting message
+        await this.bot.sendMessage(
+          chatId,
+          '⏳ جاري تحميل المراكز الصحية، يرجى الانتظار...'
+        );
+        return;
+      } else {
+        // Request timed out, clear it
+        console.log(`Request timed out for user ${chatId}, clearing active request`);
+        this.activeRequests.delete(activeRequestKey);
+      }
     }
     
-    // Set active request
-    this.activeRequests.set(activeRequestKey, true);
+    // Set active request with timestamp
+    console.log(`Setting active request for user ${chatId}`);
+    this.activeRequests.set(activeRequestKey, Date.now());
     
     try {
       // Send welcome message immediately
       await this.bot.sendMessage(
         chatId,
-        '🩺 مرحباً بك في نظام حجز المواعيد الطبية!\nيرجى اختيار المركز الصحي:'
+        '🩺 مرحباً بك في نظام حجز المواعيد الطبية!\نيرجى اختيار المركز الصحي:'
       );
       
+      console.log(`Fetching medical centers for user ${chatId}`);
       // Get medical centers (will use cached data if available)
       const centers = await this.sheetsService.getMedicalCenters();
+      console.log(`Received ${centers.length} centers for user ${chatId}`);
       
       if (centers.length === 0) {
         await this.bot.sendMessage(
@@ -301,11 +315,14 @@ class BotHandler {
         errorMessage = '⚙️ خطأ في التكوين: لا توجد صلاحيات للوصول إلى جدول البيانات. يرجى التحقق من إعدادات الوصول.';
       } else if (error.message && error.message.includes('The caller does not have permission')) {
         errorMessage = '⚙️ خطأ في التكوين: لا توجد صلاحيات للوصول إلى جدول البيانات. يرجى التحقق من إعدادات الوصول.';
+      } else if (error.message && error.message.includes('timeout')) {
+        errorMessage = '⏰ انتهت مهلة الاتصال بجداول Google. يرجى المحاولة مرة أخرى لاحقًا.';
       }
       
       await this.bot.sendMessage(chatId, errorMessage);
     } finally {
       // Clear active request
+      console.log(`Clearing active request for user ${chatId}`);
       this.activeRequests.delete(activeRequestKey);
     }
   }
@@ -317,16 +334,28 @@ class BotHandler {
     // Check if there's already an active request for this user
     const activeRequestKey = `clinics-${chatId}-${centerName}`;
     if (this.activeRequests.has(activeRequestKey)) {
-      // Send a waiting message
-      await this.bot.sendMessage(
-        chatId,
-        '⏳ جاري تحميل العيادات، يرجى الانتظار...'
-      );
-      return;
+      // Check if the request has timed out (older than 30 seconds)
+      const requestTime = this.activeRequests.get(activeRequestKey);
+      const timeElapsed = Date.now() - requestTime;
+      console.log(`Active clinic request found for user ${chatId} and center ${centerName}, time elapsed: ${timeElapsed}ms`);
+      
+      if (timeElapsed < 30000) { // 30 seconds timeout
+        // Send a waiting message
+        await this.bot.sendMessage(
+          chatId,
+          '⏳ جاري تحميل العيادات، يرجى الانتظار...'
+        );
+        return;
+      } else {
+        // Request timed out, clear it
+        console.log(`Clinic request timed out for user ${chatId} and center ${centerName}, clearing active request`);
+        this.activeRequests.delete(activeRequestKey);
+      }
     }
     
-    // Set active request
-    this.activeRequests.set(activeRequestKey, true);
+    // Set active request with timestamp
+    console.log(`Setting active clinic request for user ${chatId} and center ${centerName}`);
+    this.activeRequests.set(activeRequestKey, Date.now());
     
     try {
       console.log(`User ${chatId} selected center: ${centerName}`);
@@ -338,12 +367,12 @@ class BotHandler {
       }
       
       // Get clinics for the selected center (will use cached data if available)
-      console.log(`Fetching clinics for center: ${centerName}`);
+      console.log(`Fetching clinics for center: ${centerName} for user ${chatId}`);
       const clinics = await this.sheetsService.getClinicsForCenter(centerName);
-      console.log(`Found ${clinics.length} clinics for center ${centerName}:`, clinics);
+      console.log(`Found ${clinics.length} clinics for center ${centerName} for user ${chatId}:`, clinics);
       
       if (clinics.length === 0) {
-        console.log(`No clinics found for center: ${centerName}`);
+        console.log(`No clinics found for center: ${centerName} for user ${chatId}`);
         await this.bot.sendMessage(
           chatId,
           `❌ عذراً، لا توجد عيادات في مركز ${centerName}. يرجى اختيار مركز آخر.`
@@ -383,6 +412,8 @@ class BotHandler {
         errorMessage = '⚙️ خطأ في التكوين: لم يتم العثور على جدول البيانات. يرجى التحقق من إعدادات البوت.';
       } else if (error.message && error.message.includes('Access denied')) {
         errorMessage = '⚙️ خطأ في التكوين: لا توجد صلاحيات للوصول إلى جدول البيانات. يرجى التحقق من إعدادات الوصول.';
+      } else if (error.message && error.message.includes('timeout')) {
+        errorMessage = '⏰ انتهت مهلة الاتصال بجداول Google. يرجى المحاولة مرة أخرى لاحقًا.';
       }
       
       await this.bot.sendMessage(
@@ -391,6 +422,7 @@ class BotHandler {
       );
     } finally {
       // Clear active request
+      console.log(`Clearing active clinic request for user ${chatId} and center ${centerName}`);
       this.activeRequests.delete(activeRequestKey);
     }
   }
@@ -418,7 +450,7 @@ class BotHandler {
       if (slots.length === 0) {
         await this.bot.sendMessage(
           chatId,
-          `❌ عذراً، لا توجد مواعيد متاحة mañana في عيادة ${clinicName} بمركز ${centerName}. يرجى اختيار عيادة أخرى.`
+          `❌ عذراً، لا توجد مواعيد متاحة غداً في عيادة ${clinicName} بمركز ${centerName}. يرجى اختيار عيادة أخرى.`
         );
         return;
       }

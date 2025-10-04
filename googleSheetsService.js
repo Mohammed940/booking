@@ -98,14 +98,24 @@ class GoogleSheetsService {
   }
   
   /**
-   * Internal method to fetch full data
+   * Internal method to fetch full data with timeout
    */
   async _fetchFullData() {
     console.log('Loading full data from Google Sheets...');
-    const response = await this.sheets.spreadsheets.values.get({
+    
+    // Create a promise that rejects after 15 seconds
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Google Sheets request timeout')), 15000);
+    });
+    
+    // Create the actual request promise
+    const requestPromise = this.sheets.spreadsheets.values.get({
       spreadsheetId: this.spreadsheetId,
       range: 'A:F', // Get all relevant columns
     });
+    
+    // Race between the request and timeout
+    const response = await Promise.race([requestPromise, timeoutPromise]);
     
     const rows = response.data.values || [];
     this.cache.fullData = rows;
@@ -153,14 +163,24 @@ class GoogleSheetsService {
   }
   
   /**
-   * Internal method to fetch centers data
+   * Internal method to fetch centers data with timeout
    */
   async _fetchCentersData() {
     console.log('Loading centers data from Google Sheets...');
-    const response = await this.sheets.spreadsheets.values.get({
+    
+    // Create a promise that rejects after 10 seconds
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Google Sheets request timeout')), 10000);
+    });
+    
+    // Create the actual request promise
+    const requestPromise = this.sheets.spreadsheets.values.get({
       spreadsheetId: this.spreadsheetId,
       range: 'A:B', // Get only center and clinic columns
     });
+    
+    // Race between the request and timeout
+    const response = await Promise.race([requestPromise, timeoutPromise]);
     
     const rows = response.data.values || [];
     
@@ -214,14 +234,24 @@ class GoogleSheetsService {
   }
   
   /**
-   * Internal method to fetch clinics for a center
+   * Internal method to fetch clinics for a center with timeout
    */
   async _fetchClinicsForCenter(centerName) {
     console.log(`Loading clinics for center: ${centerName}`);
-    const response = await this.sheets.spreadsheets.values.get({
+    
+    // Create a promise that rejects after 10 seconds
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Google Sheets request timeout')), 10000);
+    });
+    
+    // Create the actual request promise
+    const requestPromise = this.sheets.spreadsheets.values.get({
       spreadsheetId: this.spreadsheetId,
       range: 'A:B', // Get only center and clinic columns
     });
+    
+    // Race between the request and timeout
+    const response = await Promise.race([requestPromise, timeoutPromise]);
     
     const rows = response.data.values || [];
     
