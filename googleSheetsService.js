@@ -41,6 +41,9 @@ class GoogleSheetsService {
       
       // Cache expiration time (5 minutes)
       this.CACHE_EXPIRATION = 5 * 60 * 1000;
+      
+      // Flag to track if we're currently loading data
+      this.loading = false;
     } catch (error) {
       console.error('Error initializing Google Sheets client:', error);
       throw new Error('Failed to initialize Google Sheets client. Please check your credentials.');
@@ -66,6 +69,19 @@ class GoogleSheetsService {
         return this.cache.fullData;
       }
       
+      // If we're already loading data, wait for it to complete
+      if (this.loading) {
+        // Wait until loading is complete
+        while (this.loading) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        // Return the cached data
+        return this.cache.fullData;
+      }
+      
+      // Set loading flag
+      this.loading = true;
+      
       console.log('Loading full data from Google Sheets...');
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.spreadsheetId,
@@ -79,8 +95,13 @@ class GoogleSheetsService {
       // Also populate centers and clinics cache from this data
       this.populateCentersAndClinicsCache(rows);
       
+      // Clear loading flag
+      this.loading = false;
+      
       return rows;
     } catch (error) {
+      // Clear loading flag on error
+      this.loading = false;
       console.error('Error loading full data into cache:', error);
       throw error;
     }
