@@ -1,107 +1,83 @@
-# Medical Booking Bot
+# Medical Booking Telegram Bot
 
-A comprehensive Telegram bot for medical appointment booking integrated with Google Sheets as a database.
+A Telegram bot for medical appointment booking integrated with Google Sheets.
 
 ## Features
-- Book appointments through Telegram bot
-- Manage medical centers and clinics
-- Schedule appointments and show available time slots
-- Store data in Google Sheets
-- Collect patient information (name and age)
 
-## Technologies Used
-- Node.js
-- Telegram Bot API
-- Google Sheets API
-- Express.js
+- Book appointments at medical centers and clinics
+- View available time slots
+- Automatic Google Sheets integration
+- Multi-step conversation flow
+- Arabic language support
 
 ## Setup
 
-### Local Development
-1. Create a bot on Telegram using BotFather
-2. Set up Google Sheets with API credentials
-3. Copy [.env.example](file:///c%3A/Users/hussein%20tech/StudioProjects/New%20folder%20%284%29/.env.example) to [.env](file:///c%3A/Users/hussein%20tech/StudioProjects/New%20folder%20%284%29/.env) and fill in your credentials
-4. For Google credentials, either:
-   - Set `GOOGLE_CREDENTIALS` environment variable with the JSON content, or
-   - Create a `google-credentials.json` file in the project root (not committed to git)
-5. Run the bot in development mode:
-   ```bash
-   npm install
-   npm run dev
-   ```
-
-### Production Deployment
-For continuous operation, deploy using webhooks:
-
-#### Deploy to Render
-1. Fork this repository
-2. Create a new Web Service on Render
-3. Connect to your forked repository
-4. Set the required environment variables
-5. Deploy the service
-
-#### Deploy to Railway
-1. Fork this repository
-2. Create a new Project on Railway
-3. Connect to your forked repository
-4. Set the required environment variables
-5. Deploy the service
+1. Clone this repository
+2. Run `npm install`
+3. Set up environment variables (see below)
+4. Deploy to your preferred platform
 
 ## Environment Variables
 
-For production deployment, you need to set these environment variables:
+Create a `.env` file with the following variables:
 
 ```
-NODE_ENV=production
 TELEGRAM_TOKEN=your_telegram_bot_token
-SPREADSHEET_ID=your_google_sheet_id
-GOOGLE_CREDENTIALS=your_google_service_account_json_content
+SPREADSHEET_ID=your_google_spreadsheet_id
+GOOGLE_APPLICATION_CREDENTIALS_BASE64=base64_encoded_google_credentials
+ADMIN_CHAT_ID=your_admin_chat_id
 ```
 
-Note: For security reasons, never commit Google credentials to the repository. Use environment variables instead.
+## Deployment
 
-## Installation
-```bash
-npm install
-```
+### Vercel (Recommended)
 
-## Running the Bot
+See [VERCEL_DEPLOYMENT_GUIDE.md](VERCEL_DEPLOYMENT_GUIDE.md) for detailed instructions.
 
-### Development Mode (Polling)
+### Other Platforms
+
+The bot can also be deployed to:
+- Render (see [RENDER_DEPLOYMENT_GUIDE.md](RENDER_DEPLOYMENT_GUIDE.md))
+- Railway (see [RAILWAY_DEPLOYMENT_GUIDE.md](RAILWAY_DEPLOYMENT_GUIDE.md))
+
+## Usage
+
+1. Start a conversation with your bot on Telegram
+2. Send `/start` or `/help` to see instructions
+3. Send `حجز` to start the booking process
+4. Follow the prompts to select center, clinic, time slot, and enter patient details
+
+## Development
+
+Run in development mode:
 ```bash
 npm run dev
 ```
 
-### Production Mode (Webhooks)
+Run in production mode:
 ```bash
 npm start
 ```
 
-## Google Sheets Setup
+## Testing
 
-1. Create a Google Sheet with the following columns:
-   - A: المركز الصحي (Medical Center)
-   - B: العيادة (Clinic)
-   - C: التاريخ (Date)
-   - D: الوقت (Time)
-   - E: الحالة (Status)
-   - F: معرف المستخدم (User ID)
-   - G: اسم المريض (Patient Name)
-   - H: عمر المريض (Patient Age)
+Run tests:
+```bash
+npm test
+```
 
-2. Set up Google Sheets API:
-   - Go to https://console.cloud.google.com/
-   - Create a new project or select an existing one
-   - Enable the Google Sheets API
-   - Go to "Credentials" > "Create Credentials" > "Service Account"
-   - Download the JSON key file
-   - Share your Google Sheet with the service account email (found in the JSON file)
-   - Give it editor access.
+## Architecture
 
-## Deployment Guides
+The bot uses:
+- Express.js for the web server
+- node-telegram-bot-api for Telegram integration
+- Google Sheets API for data storage
+- Caching to improve performance
 
-- [Render Deployment Guide](file:///c%3A/Users/hussein%20tech/StudioProjects/New%20folder%20%284%29/RENDER_DEPLOYMENT_GUIDE.md)
-- [Railway Deployment Guide](file:///c%3A/Users/hussein%20tech/StudioProjects/New%20folder%20%284%29/RAILWAY_DEPLOYMENT_GUIDE.md)
+## Troubleshooting
 
-## License
-This project is licensed under the MIT License.
+If the bot is responding slowly or sending duplicate messages:
+1. Check that only one instance of the bot is running
+2. Verify webhook configuration
+3. Check logs for errors
+4. Ensure environment variables are set correctly

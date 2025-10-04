@@ -40,8 +40,8 @@ class GoogleSheetsService {
         slots: new Map() // Cache slots by center+clinic
       };
       
-      // Cache expiration time (5 minutes)
-      this.CACHE_EXPIRATION = 5 * 60 * 1000;
+      // Cache expiration time (2 minutes for Vercel environment)
+      this.CACHE_EXPIRATION = 2 * 60 * 1000;
       
       // Flag to track if we're currently loading data
       this.loading = {

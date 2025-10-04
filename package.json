@@ -7,7 +7,8 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "cross-env NODE_ENV=test jest",
-    "test:watch": "cross-env NODE_ENV=test jest --watch"
+    "test:watch": "cross-env NODE_ENV=test jest --watch",
+    "setup-webhook": "node setup-webhook.js"
   },
   "keywords": [
     "telegram",
@@ -22,7 +23,8 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "googleapis": "^134.0.0",
-    "node-telegram-bot-api": "^0.66.0"
+    "node-telegram-bot-api": "^0.66.0",
+    "axios": "^1.6.0"
   },
   "devDependencies": {
     "cross-env": "^10.1.0",

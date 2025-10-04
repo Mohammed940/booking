@@ -4,8 +4,17 @@
 // Load Google credentials from environment variable first, then from file if specified
 let googleCredentials = null;
 
-// First try to load from GOOGLE_CREDENTIALS environment variable
-if (process.env.GOOGLE_CREDENTIALS && process.env.GOOGLE_CREDENTIALS !== 'your_google_credentials_json_here') {
+// First try to load from GOOGLE_APPLICATION_CREDENTIALS_BASE64 environment variable (for Vercel)
+if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
+  try {
+    const credentialsBuffer = Buffer.from(process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64, 'base64');
+    googleCredentials = JSON.parse(credentialsBuffer.toString('utf-8'));
+  } catch (error) {
+    console.error('Error parsing Google credentials from base64 environment variable:', error);
+  }
+}
+// Then try to load from GOOGLE_CREDENTIALS environment variable
+else if (process.env.GOOGLE_CREDENTIALS && process.env.GOOGLE_CREDENTIALS !== 'your_google_credentials_json_here') {
   try {
     googleCredentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
   } catch (error) {

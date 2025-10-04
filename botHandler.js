@@ -12,6 +12,10 @@ class BotHandler {
     this.userStates = new Map(); // Track user conversation states
     this.pendingConfirmations = new Map(); // Track pending booking confirmations
     // Note: Cron jobs removed to support free Render tier
+    
+    // Track processed updates to prevent duplicate processing
+    this.processedUpdates = new Set();
+    this.maxProcessedUpdates = 1000; // Limit size to prevent memory issues
   }
 
   /**
@@ -20,6 +24,27 @@ class BotHandler {
   async handleMessage(msg) {
     const chatId = msg.chat.id;
     const text = msg.text;
+    const messageId = msg.message_id;
+    
+    // Create a unique identifier for this message
+    const messageKey = `${chatId}-${messageId}`;
+    
+    // Check if we've already processed this message
+    if (this.processedUpdates.has(messageKey)) {
+      console.log(`Skipping duplicate message: ${messageKey}`);
+      return;
+    }
+    
+    // Add to processed updates
+    this.processedUpdates.add(messageKey);
+    
+    // Clean up old entries if we've reached the limit
+    if (this.processedUpdates.size > this.maxProcessedUpdates) {
+      const keys = Array.from(this.processedUpdates.keys());
+      // Remove oldest entries
+      const keysToRemove = keys.slice(0, 100);
+      keysToRemove.forEach(key => this.processedUpdates.delete(key));
+    }
     
     // Handle the initial "حجز" command
     if (text === 'حجز') {

@@ -10,10 +10,6 @@
     {
       "src": "/api/bot",
       "dest": "/api/bot.js"
-    },
-    {
-      "src": "/webhook",
-      "dest": "/api/bot.js"
     }
   ]
 }
