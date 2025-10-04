@@ -15,8 +15,22 @@ class SupabaseService {
     }
     
     try {
-      // Initialize Supabase client
-      this.supabase = createClient(SUPABASE.URL, SUPABASE.KEY);
+      // Initialize Supabase client with timeout settings
+      this.supabase = createClient(SUPABASE.URL, SUPABASE.KEY, {
+        auth: {
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: false
+        },
+        db: {
+          schema: 'public'
+        },
+        global: {
+          headers: {
+            'X-Client-Info': 'medical-booking-bot'
+          }
+        }
+      });
       
       // Initialize cache
       this.cache = {
@@ -27,8 +41,8 @@ class SupabaseService {
         slots: new Map() // Cache slots by center+clinic
       };
       
-      // Cache expiration time (1 minute for better responsiveness)
-      this.CACHE_EXPIRATION = 1 * 60 * 1000;
+      // Cache expiration time (increased to 5 minutes for better performance)
+      this.CACHE_EXPIRATION = 5 * 60 * 1000;
     } catch (error) {
       console.error('Error initializing Supabase client:', error);
       throw new Error('Failed to initialize Supabase client. Please check your credentials.');
@@ -43,34 +57,39 @@ class SupabaseService {
   }
 
   /**
-   * Get all medical centers from the database
+   * Get all medical centers from the database with timeout
    */
   async getMedicalCenters() {
     try {
       // If cache is still valid, return cached data
       if (this.cache.centers && !this.isCacheExpired(this.cache.centersTimestamp)) {
+        console.log('Returning cached centers data');
         return this.cache.centers;
       }
       
       console.log('Loading centers data from Supabase...');
       
-      // Fetch centers from database
-      const { data, error } = await this.supabase
-        .from('medical_centers')
-        .select('id, name')
-        .order('name');
+      // Fetch centers from database with timeout wrapper
+      const data = await this.withTimeout(
+        this.supabase
+          .from('medical_centers')
+          .select('id, name')
+          .order('name'),
+        10000 // 10 second timeout
+      );
       
-      if (error) {
-        throw new Error(`Error fetching centers: ${error.message}`);
+      if (data.error) {
+        throw new Error(`Error fetching centers: ${data.error.message}`);
       }
       
       // Extract center names
-      const centers = data.map(center => center.name);
+      const centers = data.data.map(center => center.name);
       
       // Update cache
       this.cache.centers = centers;
       this.cache.centersTimestamp = Date.now();
       
+      console.log(`Successfully loaded ${centers.length} centers`);
       return centers;
     } catch (error) {
       console.error('Error getting medical centers:', error);
@@ -79,7 +98,7 @@ class SupabaseService {
   }
 
   /**
-   * Get clinics for a specific medical center
+   * Get clinics for a specific medical center with timeout
    */
   async getClinicsForCenter(centerName) {
     try {
@@ -88,40 +107,48 @@ class SupabaseService {
       const timestamp = this.cache.clinicsTimestamps.get(centerName);
       
       if (cachedClinics && timestamp && !this.isCacheExpired(timestamp)) {
+        console.log(`Returning cached clinics for center: ${centerName}`);
         return [...cachedClinics];
       }
       
       console.log(`Loading clinics for center: ${centerName}`);
       
-      // First get the center ID
-      const { data: centerData, error: centerError } = await this.supabase
-        .from('medical_centers')
-        .select('id')
-        .eq('name', centerName)
-        .single();
+      // First get the center ID with timeout
+      const centerData = await this.withTimeout(
+        this.supabase
+          .from('medical_centers')
+          .select('id')
+          .eq('name', centerName)
+          .single(),
+        10000 // 10 second timeout
+      );
       
-      if (centerError) {
-        throw new Error(`Error fetching center: ${centerError.message}`);
+      if (centerData.error) {
+        throw new Error(`Error fetching center: ${centerData.error.message}`);
       }
       
-      // Fetch clinics for this center
-      const { data, error } = await this.supabase
-        .from('clinics')
-        .select('id, name')
-        .eq('center_id', centerData.id)
-        .order('name');
+      // Fetch clinics for this center with timeout
+      const clinicsData = await this.withTimeout(
+        this.supabase
+          .from('clinics')
+          .select('id, name')
+          .eq('center_id', centerData.data.id)
+          .order('name'),
+        10000 // 10 second timeout
+      );
       
-      if (error) {
-        throw new Error(`Error fetching clinics: ${error.message}`);
+      if (clinicsData.error) {
+        throw new Error(`Error fetching clinics: ${clinicsData.error.message}`);
       }
       
       // Extract clinic names
-      const clinics = data.map(clinic => clinic.name);
+      const clinics = clinicsData.data.map(clinic => clinic.name);
       
       // Update cache
       this.cache.clinics.set(centerName, clinics);
       this.cache.clinicsTimestamps.set(centerName, Date.now());
       
+      console.log(`Successfully loaded ${clinics.length} clinics for center: ${centerName}`);
       return clinics;
     } catch (error) {
       console.error('Error getting clinics:', error);
@@ -130,7 +157,7 @@ class SupabaseService {
   }
 
   /**
-   * Get available time slots for tomorrow for a specific center and clinic
+   * Get available time slots for tomorrow for a specific center and clinic with timeout
    */
   async getAvailableSlotsForTomorrow(centerName, clinicName) {
     try {
@@ -144,47 +171,57 @@ class SupabaseService {
       const cachedSlots = this.cache.slots.get(cacheKey);
       if (cachedSlots && !this.isCacheExpired(cachedSlots.timestamp)) {
         // Filter for tomorrow's date
+        console.log(`Returning cached slots for center: ${centerName}, clinic: ${clinicName}`);
         return cachedSlots.data.filter(slot => slot.date === tomorrow);
       }
       
-      // Get center ID
-      const { data: centerData, error: centerError } = await this.supabase
-        .from('medical_centers')
-        .select('id')
-        .eq('name', centerName)
-        .single();
+      // Get center ID with timeout
+      const centerData = await this.withTimeout(
+        this.supabase
+          .from('medical_centers')
+          .select('id')
+          .eq('name', centerName)
+          .single(),
+        10000 // 10 second timeout
+      );
       
-      if (centerError) {
-        throw new Error(`Error fetching center: ${centerError.message}`);
+      if (centerData.error) {
+        throw new Error(`Error fetching center: ${centerData.error.message}`);
       }
       
-      // Get clinic ID
-      const { data: clinicData, error: clinicError } = await this.supabase
-        .from('clinics')
-        .select('id')
-        .eq('name', clinicName)
-        .eq('center_id', centerData.id)
-        .single();
+      // Get clinic ID with timeout
+      const clinicData = await this.withTimeout(
+        this.supabase
+          .from('clinics')
+          .select('id')
+          .eq('name', clinicName)
+          .eq('center_id', centerData.data.id)
+          .single(),
+        10000 // 10 second timeout
+      );
       
-      if (clinicError) {
-        throw new Error(`Error fetching clinic: ${clinicError.message}`);
+      if (clinicData.error) {
+        throw new Error(`Error fetching clinic: ${clinicData.error.message}`);
       }
       
-      // Fetch available slots for tomorrow
-      const { data, error } = await this.supabase
-        .from('time_slots')
-        .select('id, date, start_time, end_time')
-        .eq('clinic_id', clinicData.id)
-        .eq('date', tomorrow)
-        .eq('is_available', true)
-        .order('start_time');
+      // Fetch available slots for tomorrow with timeout
+      const slotsData = await this.withTimeout(
+        this.supabase
+          .from('time_slots')
+          .select('id, date, start_time, end_time')
+          .eq('clinic_id', clinicData.data.id)
+          .eq('date', tomorrow)
+          .eq('is_available', true)
+          .order('start_time'),
+        10000 // 10 second timeout
+      );
       
-      if (error) {
-        throw new Error(`Error fetching slots: ${error.message}`);
+      if (slotsData.error) {
+        throw new Error(`Error fetching slots: ${slotsData.error.message}`);
       }
       
       // Transform data to match expected format
-      const availableSlots = data.map(slot => ({
+      const availableSlots = slotsData.data.map(slot => ({
         rowIndex: slot.id,
         date: slot.date,
         time: `${slot.start_time}-${slot.end_time}`,
@@ -197,12 +234,32 @@ class SupabaseService {
         timestamp: Date.now()
       });
       
-      console.log(`Found ${availableSlots.length} available slots`);
+      console.log(`Found ${availableSlots.length} available slots for center: ${centerName}, clinic: ${clinicName}`);
       return availableSlots;
     } catch (error) {
       console.error('Error getting available slots:', error);
       throw error;
     }
+  }
+
+  /**
+   * Wrapper function to add timeout to Supabase requests
+   */
+  async withTimeout(promise, timeoutMs) {
+    // Create a timeout promise
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Request timeout after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+    
+    // Race the original promise against the timeout
+    const result = await Promise.race([
+      promise,
+      timeoutPromise
+    ]);
+    
+    return result;
   }
 
   /**

@@ -19,7 +19,7 @@ class BotHandler {
     
     // Track active requests to prevent flooding
     this.activeRequests = new Map();
-    this.requestTimeout = 30000; // 30 seconds timeout
+    this.requestTimeout = 45000; // Increased to 45 seconds timeout
   }
 
   /**
@@ -241,17 +241,19 @@ class BotHandler {
     // Check if there's already an active request for this user
     const activeRequestKey = `centers-${chatId}`;
     if (this.activeRequests.has(activeRequestKey)) {
-      // Check if the request has timed out (older than 30 seconds)
+      // Check if the request has timed out (older than 45 seconds)
       const requestTime = this.activeRequests.get(activeRequestKey);
       const timeElapsed = Date.now() - requestTime;
       console.log(`Active request found for user ${chatId}, time elapsed: ${timeElapsed}ms`);
       
-      if (timeElapsed < 30000) { // 30 seconds timeout
-        // Send a waiting message
-        await this.bot.sendMessage(
-          chatId,
-          '⏳ جاري تحميل المراكز الصحية، يرجى الانتظار...'
-        );
+      if (timeElapsed < 45000) { // 45 seconds timeout
+        // Send a waiting message only if it's been more than 5 seconds
+        if (timeElapsed > 5000) {
+          await this.bot.sendMessage(
+            chatId,
+            '⏳ جاري تحميل المراكز الصحية، يرجى الانتظار...'
+          );
+        }
         return;
       } else {
         // Request timed out, clear it
@@ -311,6 +313,8 @@ class BotHandler {
         errorMessage = '⚙️ خطأ في التكوين: لم يتم العثور على بيانات اعتماد Supabase. يرجى التحقق من إعدادات البوت.';
       } else if (error.message && error.message.includes('timeout')) {
         errorMessage = '⏰ انتهت مهلة الاتصال بقاعدة بيانات Supabase. يرجى المحاولة مرة أخرى لاحقًا.';
+      } else if (error.message && error.message.includes('Network Error')) {
+        errorMessage = '🌐 خطأ في الشبكة: تعذر الاتصال بقاعدة بيانات Supabase. يرجى التحقق من اتصالك بالإنترنت.';
       }
       
       await this.bot.sendMessage(chatId, errorMessage);
@@ -328,17 +332,19 @@ class BotHandler {
     // Check if there's already an active request for this user
     const activeRequestKey = `clinics-${chatId}-${centerName}`;
     if (this.activeRequests.has(activeRequestKey)) {
-      // Check if the request has timed out (older than 30 seconds)
+      // Check if the request has timed out (older than 45 seconds)
       const requestTime = this.activeRequests.get(activeRequestKey);
       const timeElapsed = Date.now() - requestTime;
       console.log(`Active clinic request found for user ${chatId} and center ${centerName}, time elapsed: ${timeElapsed}ms`);
       
-      if (timeElapsed < 30000) { // 30 seconds timeout
-        // Send a waiting message
-        await this.bot.sendMessage(
-          chatId,
-          '⏳ جاري تحميل العيادات، يرجى الانتظار...'
-        );
+      if (timeElapsed < 45000) { // 45 seconds timeout
+        // Send a waiting message only if it's been more than 5 seconds
+        if (timeElapsed > 5000) {
+          await this.bot.sendMessage(
+            chatId,
+            '⏳ جاري تحميل العيادات، يرجى الانتظار...'
+          );
+        }
         return;
       } else {
         // Request timed out, clear it
@@ -404,6 +410,8 @@ class BotHandler {
       // Provide more specific error messages
       if (error.message && error.message.includes('timeout')) {
         errorMessage = '⏰ انتهت مهلة الاتصال بقاعدة بيانات Supabase. يرجى المحاولة مرة أخرى لاحقًا.';
+      } else if (error.message && error.message.includes('Network Error')) {
+        errorMessage = '🌐 خطأ في الشبكة: تعذر الاتصال بقاعدة بيانات Supabase. يرجى التحقق من اتصالك بالإنترنت.';
       }
       
       await this.bot.sendMessage(
@@ -440,7 +448,7 @@ class BotHandler {
       if (slots.length === 0) {
         await this.bot.sendMessage(
           chatId,
-          `❌ عذراً، لا توجد مواعيد متاحة mañana في عيادة ${clinicName} بمركز ${centerName}. يرجى اختيار عيادة أخرى.`
+          `❌ عذراً، لا توجد مواعيد متاحة غداً في عيادة ${clinicName} بمركز ${centerName}. يرجى اختيار عيادة أخرى.`
         );
         return;
       }
